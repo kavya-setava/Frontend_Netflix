@@ -1,0 +1,45 @@
+*
+{
+    margin:0px;
+    padding:0px;
+    box-sizing: border-box;
+}
+body {
+  background-color: #f0f4f8; /* Soft gray-blue background for modern feel */
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.tickets-wrapper {
+  background-color: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin: 24px;
+}
+
+.ticket-header {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+.action-buttons button {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  border: none;
+}
+
+.btn-warning {
+  background-color: #f39c12;
+  border: none;
+  color: white;
+}
+
+.btn-success {
+  background-color: #27ae60;
+  border: none;
+}
