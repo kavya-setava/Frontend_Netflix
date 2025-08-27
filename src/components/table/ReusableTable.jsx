@@ -1,8 +1,11 @@
 import React from "react";
 
 const ReusableTable = ({ columns, data }) => {
+   const myDivStyle = {
+    minHeight: '100vh'
+  };
   return (
-    <div className="table-responsive">
+    <div className="table-responsive" style={myDivStyle}>
       <table className="table-striped table-hover">
         <thead>
           <tr>

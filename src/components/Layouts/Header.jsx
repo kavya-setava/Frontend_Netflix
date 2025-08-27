@@ -31,7 +31,7 @@ import IconMenuDatatables from '../Icon/Menu/IconMenuDatatables';
 import IconMenuForms from '../Icon/Menu/IconMenuForms';
 import IconMenuPages from '../Icon/Menu/IconMenuPages';
 import IconMenuMore from '../Icon/Menu/IconMenuMore';
-import { selectCurrentUser,selectCurrentToken, selectAuthStatus, setToken } from "../../store/userProfile/UserProfileSlice";
+import { selectCurrentUser,selectCurrentToken, selectAuthStatus } from "../../store/userProfile/UserProfileSlice";
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { resetUser } from '../../store/userProfile/UserProfileSlice';
@@ -46,8 +46,6 @@ const Header = () => {
       const navigate = useNavigate();
       const userDetails = JSON.parse(localStorage.getItem("user"));
         const user2 = JSON.parse(localStorage.getItem("user"));
-        const token=localStorage.getItem("authToken")
-        const [userToken,setUserToken]=useState(token || "")
 console.log(user2?.name);
       const userProfileIcon = userDetails?.picture
       const handleClick = () => {
@@ -64,8 +62,6 @@ Swal.fire({
           if (result.isConfirmed) {
             // Clear Redux state
           navigate("/login")
-          setUserToken("")
-          console.log(userToken)
       
             // Show success message
             Swal.fire({

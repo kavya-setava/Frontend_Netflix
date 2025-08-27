@@ -16,7 +16,9 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin: 24px;
 }
-
+.table-responsive table tbody tr, .table-responsive table tbody tr a{
+  font-size: 0.8rem !important;
+}
 .ticket-header {
   font-size: 20px;
   font-weight: bold;

@@ -7,7 +7,7 @@ import { Card } from 'react-bootstrap';
 import { Download } from 'lucide-react';
 
 const Tickets = () => {
-  const [showDateRange, setShowDateRange] = useState(false);
+  const [role, setRole] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
     const [assignedCount, setAssignedCount] = useState(0);
@@ -18,6 +18,13 @@ const [totalCount, setTotalCount] = useState(0);
   const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
 const pagesPerGroup = 5;
 
+const [selectedRegions, setSelectedRegions] = useState([]);
+const [selectedCM, setSelectedCM] = useState([]); // was null
+const [selectedTicketId, setSelectedTicketId] = useState([]); // was null
+
+const [allTicketsData, setAllTicketsData] = useState([]);
+const [cmOptions, setCmOptions] = useState([]);
+const [ticketIdOptions, setTicketIdOptions] = useState([]);
 
 
 
@@ -27,27 +34,51 @@ const pagesPerGroup = 5;
     closedTickets: 0,
   });
 
+  
+
+  const [projects, setProjects] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  
+const [dropdownData, setDropdownData] = useState([]);
+
+
+useEffect(() => {
+  const userData = JSON.parse(localStorage.getItem("user")); // stored after login
+  if (userData?.role !== undefined) {
+    setRole(userData.role);
+  }
+}, []);
 
   
-  const handleRegionChange = (selectedOptions) => {
-    setSelectedRegions(selectedOptions || []);
-    setPage(1); // Reset page to 1
-  };
+const handleRegionChange = (selectedOptions) => {
+  setSelectedRegions(selectedOptions || []);
+  setSelectedCM([]); // reset CM when region changes
+  setSelectedTicketId([]); // reset ticket IDs too
+  setPage(1);
+  setPaginationGroup(0);
+};
+
   const handleCmChange = (selectedOptions) => {
     setSelectedCM(selectedOptions || []);
-    setPage(1); // Reset page to 1
+     setSelectedTicketId([]);
+    setPage(1);
+    setPaginationGroup(0);
   };
   const handleTicketIdChange = (selectedOptions) => {
     setSelectedTicketId(selectedOptions || []);
     setPage(1); // Reset page to 1
+    setPaginationGroup(0);
   };
   const handleStartDateChange = (date) => {
     setStartDate(date);
     setPage(1); // Reset page to 1
+    setPaginationGroup(0);
   };
   const handleEndDateChange = (date) => {
     setEndDate(date);
     setPage(1); // Reset page to 1
+    setPaginationGroup(0);
   };
 
 
@@ -59,14 +90,7 @@ const pagesPerGroup = 5;
   ];
 
 
-  const [selectedRegions, setSelectedRegions] = useState([]);
-  const [selectedCM, setSelectedCM] = useState([]); // was null
-const [selectedTicketId, setSelectedTicketId] = useState([]); // was null
 
-
-  const [projects, setProjects] = useState([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
 
 const getPageNumbers = () => {
@@ -88,7 +112,7 @@ useEffect(() => {
  
 
     fetchTickets();
-  }, [selectedRegions, selectedCM, selectedTicketId, startDate, endDate, page,assignedCount,totalCount,closedCount]); // This hook reacts to all changes
+  }, [selectedRegions, selectedCM, selectedTicketId, startDate, endDate, page]); // This hook reacts to all changes, ,assignedCount,totalCount,closedCount removed for correct count as per accuracy
 
    const fetchTickets = async () => {
       const cmRegionList = selectedRegions.map((r) => r.value).join(',');
@@ -117,27 +141,53 @@ useEffect(() => {
       }
     };
 
-  const [timers, setTimers] = useState({});
+    const fetchAllTicketsForDropdowns = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&page=1&limit=999999`);
+        const json = await res.json();
+        if (json.success) {
+          setAllTicketsData(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch all ticket data for dropdowns", err);
+      }
+    };
+    useEffect(() => {
+      fetchAllTicketsForDropdowns();
+    }, []);
 
+  const [timers, setTimers] = useState({});
   useEffect(() => {
     const interval = setInterval(() => {
       const newTimers = {};
-
-      projects.forEach((proj) => {
-        const diff = proj.endTimestamp - Date.now();
-        const totalSeconds = Math.max(0, Math.floor(diff / 1000));
-        const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-        const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-        const secs = String(totalSeconds % 60).padStart(2, '0');
-
-        newTimers[proj.ticketKey] = `${hrs}:${mins}:${secs}`;
+  
+      tickets.forEach((ticket) => {
+        // Assuming you have a SLA start timestamp (example: ticket.createdAt)
+        const slaStartTime = new Date(ticket.createdAt).getTime();
+  
+        // SLA limit in milliseconds (2 hours)
+        const slaLimit = 2 * 60 * 60 * 1000;
+  
+        // Time left = SLA limit - time passed
+        const timeLeft = slaLimit - (Date.now() - slaStartTime);
+  
+        const totalSeconds = Math.floor(timeLeft / 1000);
+        const hrs = String(Math.floor(Math.abs(totalSeconds) / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((Math.abs(totalSeconds) % 3600) / 60)).padStart(2, '0');
+        const secs = String(Math.abs(totalSeconds) % 60).padStart(2, '0');
+  
+        newTimers[ticket._id] = {
+          text: `${hrs}:${mins}:${secs}`,
+          expired: totalSeconds < 0 // expired means SLA passed
+        };
       });
-
-      setTimers(newTimers);
+  
+      setSlaTimers(newTimers);
     }, 1000);
-
+  
     return () => clearInterval(interval);
   }, [projects]);
+  
 
 
 
@@ -156,7 +206,6 @@ useEffect(() => {
   setClosedCount(projects.filter(item => item.status === "Closed").length);
 }, [projects]);
 
-const [dropdownData, setDropdownData] = useState([]);
 useEffect(() => {
   const fetchDropdownData = async () => {
     try {
@@ -173,6 +222,68 @@ useEffect(() => {
   fetchDropdownData();
 }, []);
 
+useEffect(() => {
+  const filteredByRegion = selectedRegions.length > 0
+    ? allTicketsData.filter(t => selectedRegions.map(r => r.value).includes(t.cm_region))
+    : allTicketsData;
+
+  const uniqueCms = Array.from(new Set(filteredByRegion.map(t => t.CM_name))).filter(Boolean);
+  setCmOptions(uniqueCms.map(name => ({ value: name, label: name })));
+
+  const filteredByCm = selectedCM.length > 0
+    ? filteredByRegion.filter(t => selectedCM.map(c => c.value).includes(t.CM_name))
+    : filteredByRegion;
+
+  const uniqueTickets = Array.from(new Set(filteredByCm.map(t => t.ticketKey))).filter(Boolean);
+  setTicketIdOptions(uniqueTickets.map(key => ({ value: key, label: key })));
+}, [selectedRegions, selectedCM, allTicketsData]);
+
+
+
+
+
+function CountdownTimer({ timeRemaining }) {
+
+  const parseTimeToSeconds = (timeStr) => {
+    // Example: "-108:05:41" → negative
+    const isNegative = timeStr.startsWith("-");
+    const parts = timeStr.replace("-", "").split(":").map(Number);
+    const totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return isNegative ? -totalSeconds : totalSeconds;
+  };
+
+  const [secondsRemaining, setSecondsRemaining] = useState(
+    parseTimeToSeconds(timeRemaining)
+  );
+
+  useEffect(() => {
+    // Sync with backend whenever timeRemaining prop changes (e.g., on refresh)
+    setSecondsRemaining(parseTimeToSeconds(timeRemaining));
+  }, [timeRemaining]);
+
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setSecondsRemaining((prev) => prev - 1); // always decrement by 1 sec
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, []);
+
+ const formatTime = (totalSeconds) => {
+    const isNegative = totalSeconds < 0;
+    const absSeconds = Math.abs(totalSeconds);
+    const hours = String(Math.floor(absSeconds / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((absSeconds % 3600) / 60)).padStart(2, "0");
+    const seconds = String(absSeconds % 60).padStart(2, "0");
+    return `${isNegative ? "-" : ""}${hours}:${minutes}:${seconds}`;
+  };
+
+
+  return (
+    <span style={{ fontWeight: "bold" }}>
+      {formatTime(secondsRemaining)}
+    </span>
+  );
+}
   const columns = [
     // {
     //   label: 'S. No',
@@ -250,19 +361,93 @@ useEffect(() => {
       ),
       key: 'SLA',
       render: (row) => {
-        const timeStr = timers[row.ticketKey] || '00:00:00';
-        const [h, m, s] = timeStr.split(':').map(Number);
-        const totalSeconds = h * 3600 + m * 60 + s;
+        //console.log(row.slaData.timeRemaining);
+        // const timeStr = row.slaData.timeRemaining || '00:00:00';
+        // const [h, m, s] = timeStr.split(':').map(Number);
+        // const totalSeconds = h * 3600 + m * 60 + s;
 
-        let color = 'green';
-        if (totalSeconds <= 2700 && totalSeconds > 1800) color = 'orange';
-        if (totalSeconds <= 1800) color = 'red';
+        // let color = 'green';
+        // if (totalSeconds <= 2700 && totalSeconds > 1800) color = 'orange';
+        // if (totalSeconds <= 1800) color = 'red';
+        // if(row.status == 'Need More Information' || row.status == 'Closed' || row.status == 'Sent to VAO'){
+        //   color = 'green';
+        //   return <span style={{ color, fontWeight: 'bold' }}>00:00:00</span>;
+        // }else{
+        //   //return <span style={{ color, fontWeight: 'bold' }}>{totalSeconds}</span>;
+        //   return <span style={{ color, fontWeight: 'bold' }}><CountdownTimer initialSeconds={totalSeconds} /></span>;
+        // }
 
+       // Convert "HH:MM:SS" or "-HH:MM:SS" to total seconds
+       const parseToSeconds = (timeStr) => {
+        if (!timeStr) return 0;
+        
+        const isNegative = timeStr.startsWith("-");
+        const cleanTime = timeStr.replace("-", "");
+        
+        const parts = cleanTime.split(":").map(Number);
+        let total = 0;
+        if (parts.length === 3) {
+          const [hh, mm, ss] = parts;
+          total = hh * 3600 + mm * 60 + ss;
+        }
+        return isNegative ? -total : total;
+      };
+      
+      const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
+      
+      let color = "green";
+      
+      // Special statuses override everything
+      if (
+        row.status === "Need More Information" ||
+        row.status === "Closed" ||
+        row.status === "Sent to VAO"
+      ) {
+        color = "green";
+        return (
+          <span style={{ color }}>
+            <span style={{ fontWeight: "bold" }}>
+             {row.slaData.timeRemaining}
+            </span>
+          </span>
+        );
+      } else if (totalSeconds < 0) {
+        color = "red"; // overdue
+        return (
+          <span style={{ color }}>
+            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+          </span>
+        );
+      } else if (totalSeconds <= 1800) {
+        color = "red"; // 30 min or less
+        return (
+          <span style={{ color }}>
+            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+          </span>
+        );
+      } else if (totalSeconds <= 2700 && totalSeconds > 1800) {
+        color = "orange"; // 45–30 min
+        return (
+          <span style={{ color }}>
+            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+          </span>
+        );
+      }else{
+        color = "green"; // 45–30 min
+         //console.log(row);
+        return (
+          <span style={{ color }}>
+            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+          </span>
+        );
+      }
+      
+      
+      
 
-        return <span style={{ color, fontWeight: 'bold' }}>{timeStr}</span>;
       }
     },
-    ...(user?.role !== 'cm' ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+    ...(Number(user?.role) !== 1  ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
     {
       label: 'Name of AM',
       key: 'AM_name'
@@ -277,6 +462,8 @@ useEffect(() => {
   label: 'Status',
   key: 'status',
   render: (row) => {
+
+    
     return (
       <Select
         options={[
@@ -288,7 +475,8 @@ useEffect(() => {
           { value: 'Sent to VAO', label: 'Sent to VAO' }
         ]}
         value={row.status ? { label: row.status, value: row.status } : null}
-        isClearable
+        isClearable={Number(user?.role) === 1} // allow clearing only for CM
+        // isDisabled={user?.role === 0} // disable for QM and others
         classNamePrefix="react-select"
         styles={{
           container: (base) => ({
@@ -326,7 +514,7 @@ useEffect(() => {
         const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
 
         const res = await fetch(
-          `http://localhost:5000/api/getNetflixTickets?email=djavvaji@netflixcontractors.com&role=0&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
+          `http://localhost:5000/api/getNetflixTickets?email=${email}&role=0&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
         );
 
         const data = await res.json();
@@ -367,10 +555,91 @@ useEffect(() => {
   fetchTickets();
    // Optional: Reset to first pagination group
 };
+const downloadCSV = async () => {
+  try {
+    const cmRegionList = selectedRegions.map((r) => r.value).join(",");
+    const cmNameList = selectedCM.map((c) => c.value).join(",");
+    const ticketKeyList = selectedTicketId.map((t) => t.value).join(",");
+    const createdFrom = startDate ? startDate.toISOString().split("T")[0] : "";
+    const createdTo = endDate ? endDate.toISOString().split("T")[0] : "";
+
+    const res = await fetch(
+      `http://localhost:5000/api/getNetflixTickets?email=${email}&page=1&limit=999999&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
+    );
+    const json = await res.json();
+
+    if (!json.success || !json.data || json.data.length === 0) {
+      alert("No data to download");
+      return;
+    }
+
+    const allTickets = json.data;
+
+    // Headers from columns
+    const headers = columns.map((col) =>
+      typeof col.label === "string"
+        ? col.label
+        : col.label?.props?.children?.[0] || ""
+    );
+
+    // Rows
+    const rows = allTickets.map((row) => {
+      return columns.map((col) => {
+        let val = "";
+
+        // Special handling for SLA column
+        if (col.key === "SLA" && row.slaData?.timeRemaining != null) {
+          val = row.slaData.timeRemaining; // keep the negative if exists
+        }
+        // If column has a key and exists in row
+        else if (col.key && row[col.key] !== undefined) {
+          val = row[col.key];
+        }
+        // If column has a render function, use it for CSV too
+        else if (typeof col.render === "function") {
+          const rendered = col.render(row);
+          // Extract text from JSX if needed
+          if (typeof rendered === "string") {
+            val = rendered;
+          } else if (React.isValidElement(rendered)) {
+            val = rendered.props?.children
+              ? (Array.isArray(rendered.props.children)
+                  ? rendered.props.children.join("")
+                  : rendered.props.children)
+              : "";
+          } else {
+            val = rendered ?? "";
+          }
+        }
+
+        if (typeof val === "object") val = JSON.stringify(val);
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }).join(",");
+    });
+
+    // CSV Content
+    const csvContent = [headers.join(","), ...rows].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "tickets_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Error downloading CSV:", error);
+    alert("Error generating report");
+  }
+};
+
 
 
   return (
     <div className="p-4">
+
       <Card>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h1 className="fs-1 mb-0" style={{ fontSize: "16px" }}>
@@ -396,92 +665,77 @@ useEffect(() => {
         </div>
 
         {/* Filter Section */}
-        <div className="d-flex justify-content-between align-items-center flex-wrap mb-3 gap-2">
-          <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{display:"flex"}}>
-          {user?.role !== 'cm' && (
-            <div style={{ minWidth: 200 }}>
-              <Select
-                isMulti 
-                options={regionOptions}
-                value={selectedRegions}
-                onChange={handleRegionChange}
-                placeholder="Select Region(s)"
-                classNamePrefix="react-select"
-              />
-              
-            </div>
-              )}
-            {user?.role !== "cm" && (
-              <>
-                <div style={{ minWidth: 200 }}>
-                  <Select
-                    isClearable
-                    isMulti
-                    options={Array.from(
-                      new Set(dropdownData.map(item => item.ticketname))
-                    ).map(name => ({ value: name, label: name }))}
-                    placeholder="Select CM"
-                    value={selectedCM}
-                    onChange={handleCmChange}
-                  />
-                </div>
+        <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{display:"flex"}}>
+   {Number(user?.role) === 0 && (
+    <>
+      <div style={{ minWidth: 200 }}>
+        <Select
+          isMulti
+          options={regionOptions}
+          value={selectedRegions}
+          onChange={handleRegionChange}
+          placeholder="Select Region(s)"
+          classNamePrefix="react-select"
+        />
+      </div>
 
-                <div style={{ minWidth: 200 }}>
-                  <Select
-                    isClearable
-                    isMulti
-                    options={dropdownData.map(item => ({
-                      value: item.ticketkey,
-                      label: item.ticketkey
-                    }))}
-                    placeholder="Select Ticket ID"
-                    value={selectedTicketId}
-                    onChange={handleTicketIdChange}
-                  />
-                </div>
-                  <div className="form-group pe-3 flex">
-              <label htmlFor="fromDate" className="mb-1 " style={{display:"flex",alignItems:"center"}}><strong>From Date : </strong></label>
-              <input
-                type="date"
-                id="fromDate"
-                className="form-control p-2 ms-1"
-                value={startDate ? startDate.toISOString().split('T')[0] : ''}
-                 onChange={(e) => handleStartDateChange(e.target.value ? new Date(e.target.value) : null)}
-                max={new Date().toISOString().split('T')[0]}
+      <div style={{ minWidth: 200 }}>
+        <Select
+          isClearable
+          isMulti
+          options={cmOptions}
+          placeholder="Select CM"
+          value={selectedCM}
+          onChange={handleCmChange}
+        />
+      </div>
 
-                
-              />
-            </div>
-            <div className="form-group pe-3 flex">
-              <label htmlFor="toDate" className="mb-1" style={{display:"flex",alignItems:"center"}}><strong>To Date : </strong></label>
-              <input
-                type="date"
-                id="toDate"
-                className="form-control p-2 ms-1"
-                min={startDate ? startDate.toISOString().split('T')[0] : ''}
-                max={new Date().toISOString().split('T')[0]}
-                value={endDate ? endDate.toISOString().split('T')[0] : ''}
-                onChange={(e) => handleEndDateChange(e.target.value ? new Date(e.target.value) : null)}
-              />
-            </div>
-            
-  <button
-    className="btn btn-outline-secondary"
-    onClick={resetFilters}
-  >
-    Reset Filters
-  </button>
-              </>
-            )}
-          </div>
+      <div style={{ minWidth: 200 }}>
+        <Select
+          isClearable
+          isMulti
+          options={ticketIdOptions}
+          placeholder="Select Ticket ID"
+          value={selectedTicketId}
+          onChange={handleTicketIdChange}
+        />
+      </div>
 
-          {/* Date Range Filters */}
-          <div className="flex gap-4 py-3 px-2">
-          
-          </div>
-        </div>
+      <div className="form-group pe-3 flex">
+        <label htmlFor="fromDate" className="mb-1"><strong>From Date : </strong></label>
+        <input
+          type="date"
+          id="fromDate"
+          className="form-control p-2 ms-1"
+          value={startDate ? startDate.toISOString().split('T')[0] : ''}
+          onChange={(e) => handleStartDateChange(e.target.value ? new Date(e.target.value) : null)}
+          max={new Date().toISOString().split('T')[0]}
+        />
+      </div>
+
+      <div className="form-group pe-3 flex">
+        <label htmlFor="toDate" className="mb-1"><strong>To Date : </strong></label>
+        <input
+          type="date"
+          id="toDate"
+          className="form-control p-2 ms-1"
+          min={startDate ? startDate.toISOString().split('T')[0] : ''}
+         // max={new Date().toISOString().split('T')[0]}
+          value={endDate ? endDate.toISOString().split('T')[0] : ''}
+          onChange={(e) => handleEndDateChange(e.target.value ? new Date(e.target.value) : null)}
+        />
+      </div>
+
+      <button className="btn btn-outline-secondary" onClick={resetFilters}>
+        Reset Filters
+      </button>
+    </>
+  )}
+</div>
+
 
         {/* Download Button */}
+        
         <div className="d-flex gap-2 mb-5 mt-3" style={{ justifyContent: "flex-end",display:"flex" }}>
           <button
             className="d-flex align-items-center gap-2"
@@ -492,9 +746,13 @@ useEffect(() => {
               borderRadius: '6px',
               padding: '8px 16px',
               display:"flex"
+              
             }}
+             onClick={downloadCSV}
           >
-            <Download size={16} />
+            <Download size={16}
+          
+            />
             Download Report
           </button>
         </div>
