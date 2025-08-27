@@ -321,11 +321,11 @@ function CountdownTimer({ timeRemaining }) {
 ,
 
     {
-      label: 'Assigned Date & Time',
+      label: 'Created Date & Time',
       key: 'created'
     },
 {
-  label: 'Updated Date & Time',
+  label: 'Last Updated Date & Time',
   key: 'updated',
   render: (row) => {
     if (!row.updated) return '-';
