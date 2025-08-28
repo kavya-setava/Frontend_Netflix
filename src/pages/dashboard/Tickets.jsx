@@ -32,6 +32,11 @@ const [ticketIdOptions, setTicketIdOptions] = useState([]);
     totalTickets: 0,
     assignedTickets: 0,
     closedTickets: 0,
+    startTickets: 0,
+    interimTickets: 0,
+    needMoreInfoTickets: 0,
+    sentToVaoTickets: 0,
+    solutionProvidedTickets: 0,
   });
 
   
@@ -133,7 +138,7 @@ useEffect(() => {
             // Set the global metrics ONLY if it's the first page and no other filters are active.
             const isFirstLoad = page === 1 && !cmRegionList && !cmNameList && !ticketKeyList && !createdFrom && !createdTo;
             if (isFirstLoad) {
-                setGlobalMetrics(json.metrics || { totalTickets: 0, assignedTickets: 0, closedTickets: 0 });
+                setGlobalMetrics(json.metrics || { totalTickets: 0, assignedTickets: 0, closedTickets: 0, startTickets: 0, interimTickets: 0, needMoreInfoTickets: 0, sentToVaoTickets: 0, solutionProvidedTickets: 0 });
             }
         }
       } catch (err) {
@@ -393,7 +398,8 @@ function CountdownTimer({ timeRemaining }) {
         return isNegative ? -total : total;
       };
       
-      const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
+      // const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
+      const totalSeconds = parseToSeconds(row.SLA);
       
       let color = "green";
       
@@ -407,7 +413,8 @@ function CountdownTimer({ timeRemaining }) {
         return (
           <span style={{ color }}>
             <span style={{ fontWeight: "bold" }}>
-             {row.slaData.timeRemaining}
+             {/* {row.slaData.timeRemaining} */}
+               {row.SLA}
             </span>
           </span>
         );
@@ -415,21 +422,24 @@ function CountdownTimer({ timeRemaining }) {
         color = "red"; // overdue
         return (
           <span style={{ color }}>
-            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
+            <CountdownTimer timeRemaining={row.SLA} />
           </span>
         );
       } else if (totalSeconds <= 1800) {
         color = "red"; // 30 min or less
         return (
           <span style={{ color }}>
-            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
+            <CountdownTimer timeRemaining={row.SLA} />
           </span>
         );
       } else if (totalSeconds <= 2700 && totalSeconds > 1800) {
         color = "orange"; // 45–30 min
         return (
           <span style={{ color }}>
-            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
+            <CountdownTimer timeRemaining={row.SLA} />
           </span>
         );
       }else{
@@ -437,7 +447,8 @@ function CountdownTimer({ timeRemaining }) {
          //console.log(row);
         return (
           <span style={{ color }}>
-            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
+            <CountdownTimer timeRemaining={row.SLA} />
           </span>
         );
       }
@@ -588,8 +599,11 @@ const downloadCSV = async () => {
         let val = "";
 
         // Special handling for SLA column
-        if (col.key === "SLA" && row.slaData?.timeRemaining != null) {
-          val = row.slaData.timeRemaining; // keep the negative if exists
+        // if (col.key === "SLA" && row.slaData?.timeRemaining != null) {
+        //   val = row.slaData.timeRemaining; // keep the negative if exists
+        // }
+         if (col.key === "SLA" && row.SLA) {
+          val = row.SLA; // keep the negative if exists
         }
         // If column has a key and exists in row
         else if (col.key && row[col.key] !== undefined) {
@@ -650,17 +664,37 @@ const downloadCSV = async () => {
 
         {/* Count Cards */}
         <div className="d-flex flex-wrap gap-3 mb-4" style={{display:"flex"}}>
-          <div className="card text-white bg-warning p-3" style={{ minWidth: 180,display:"flex" }}>
-            <h6>Total Tickets :</h6>
+          <div className="card text-white bg-warning p-3" style={{ display:"flex" }}>
+            <h6>Total :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}> {globalMetrics.totalTickets}</h4>
           </div>
-          <div className="card text-white bg-danger p-3" style={{ minWidth: 180,display:"flex" }}>
-            <h6>Assigned Tickets :</h6>
+          <div className="card text-white bg-danger p-3" style={{ display:"flex" }}>
+            <h6>Assigned :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.assignedTickets}</h4>
           </div>
-          <div className="card text-white bg-success p-3" style={{ minWidth: 180,display:"flex" }}>
-          <h6>Closed Tickets :</h6>
+          <div className="card text-white bg-success p-3" style={{ display:"flex" }}>
+          <h6>Closed :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}> {globalMetrics.closedTickets}</h4>
+          </div>
+          <div className="card text-white bg-primary p-3" style={{ display:"flex" }}>
+            <h6>Start :</h6>
+            <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.startTickets}</h4>
+          </div>
+          <div className="card text-white bg-secondary p-3" style={{ display:"flex" }}>
+            <h6>interim :</h6>
+            <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.interimTickets}</h4>
+          </div>
+          <div className="card text-white bg-info p-3" style={{ display:"flex" }}>
+            <h6>Need More Info :</h6>
+            <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.needMoreInfoTickets}</h4>
+          </div>
+          <div className="card text-white p-3" style={{ backgroundColor: "#564d4d", display:"flex" }}>
+            <h6>Sent to VAO :</h6>
+            <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.sentToVaoTickets}</h4>
+          </div>
+          <div className="card text-white bg-dark p-3" style={{ display:"flex" }}>
+            <h6>Solution Provided :</h6>
+            <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.solutionProvidedTickets}</h4>
           </div>
         </div>
 
