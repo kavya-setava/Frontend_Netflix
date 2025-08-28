@@ -662,6 +662,26 @@ const downloadCSV = async () => {
 
         </div>
 
+        
+        <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{display:"flex"}}>
+        {Number(user?.role) === 0 && (
+<>
+
+<div style={{ minWidth: 200 , marginBottom: "14px" }}>
+        <Select
+          isMulti
+          options={regionOptions}
+          value={selectedRegions}
+          onChange={handleRegionChange}
+          placeholder="Select Region(s)"
+          classNamePrefix="react-select"
+        />
+      </div>
+
+</>
+ )}
+</div>       
+
         {/* Count Cards */}
         <div className="d-flex flex-wrap gap-3 mb-4" style={{display:"flex"}}>
           <div className="card text-white bg-warning p-3" style={{ display:"flex" }}>
@@ -702,7 +722,7 @@ const downloadCSV = async () => {
         <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{display:"flex"}}>
    {Number(user?.role) === 0 && (
     <>
-      <div style={{ minWidth: 200 }}>
+      {/* <div style={{ minWidth: 200 }}>
         <Select
           isMulti
           options={regionOptions}
@@ -711,7 +731,7 @@ const downloadCSV = async () => {
           placeholder="Select Region(s)"
           classNamePrefix="react-select"
         />
-      </div>
+      </div> */}
 
       <div style={{ minWidth: 200 }}>
         <Select
