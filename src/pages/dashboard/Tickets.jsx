@@ -684,35 +684,35 @@ const downloadCSV = async () => {
 
         {/* Count Cards */}
         <div className="d-flex flex-wrap gap-3 mb-4" style={{display:"flex"}}>
-          <div className="card text-white bg-warning p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-warning p-3" style={{justifyContent:"center", minWidth:"150px", display:"flex" }}>
             <h6>Total :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}> {globalMetrics.totalTickets}</h4>
           </div>
-          <div className="card text-white bg-danger p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-danger p-3" style={{justifyContent:"center",  minWidth:"150px", display:"flex" }}>
             <h6>Assigned :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.assignedTickets}</h4>
           </div>
-          <div className="card text-white bg-success p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-success p-3" style={{justifyContent:"center",  minWidth:"150px", display:"flex" }}>
           <h6>Closed :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}> {globalMetrics.closedTickets}</h4>
           </div>
-          <div className="card text-white bg-primary p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-primary p-3" style={{justifyContent:"center", minWidth:"150px", display:"flex" }}>
             <h6>Start :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.startTickets}</h4>
           </div>
-          <div className="card text-white bg-secondary p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-secondary p-3" style={{justifyContent:"center", minWidth:"150px", display:"flex" }}>
             <h6>interim :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.interimTickets}</h4>
           </div>
-          <div className="card text-white bg-info p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-info p-3" style={{ justifyContent:"center", minWidth:"150px", display:"flex" }}>
             <h6>Need More Info :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.needMoreInfoTickets}</h4>
           </div>
-          <div className="card text-white p-3" style={{ backgroundColor: "#564d4d", display:"flex" }}>
+          <div className="card text-white p-3" style={{ justifyContent:"center", backgroundColor: "#564d4d", minWidth:"150px", display:"flex" }}>
             <h6>Sent to VAO :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.sentToVaoTickets}</h4>
           </div>
-          <div className="card text-white bg-dark p-3" style={{ display:"flex" }}>
+          <div className="card text-white bg-dark p-3" style={{ justifyContent:"center", minWidth:"150px", display:"flex" }}>
             <h6>Solution Provided :</h6>
             <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.solutionProvidedTickets}</h4>
           </div>
