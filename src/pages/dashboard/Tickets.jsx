@@ -728,7 +728,10 @@ const Tickets = () => {
                         return (
                             <div
                                 key={idx}
-                                onClick={() => setSelectedStatus(isActive ? null : item.selectedStatusKey)}
+                                onClick={() => {
+                                    setSelectedStatus(isActive ? null : item.selectedStatusKey);
+                                    setPage(1);
+                                }}
                                 className={`card text-white p-3 bg-${item.color !== 'custom' ? item.color : ''}`}
                                 style={{
                                     textAlign: 'center',
