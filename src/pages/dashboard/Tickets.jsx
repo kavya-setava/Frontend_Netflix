@@ -25,6 +25,7 @@ const Tickets = () => {
 
     const [allTicketsData, setAllTicketsData] = useState([]);
     const [cmOptions, setCmOptions] = useState([]);
+    const [cmMasterList, setCmMasterList] = useState([]);
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
 
     const [globalMetrics, setGlobalMetrics] = useState({
@@ -49,6 +50,23 @@ const Tickets = () => {
         if (userData?.role !== undefined) {
             setRole(userData.role);
         }
+    }, []);
+
+    //Fetching all the CM's
+    useEffect(() => {
+        const fetchCMs = async () => {
+            try {
+                const res = await fetch(`http://localhost:5000/api/getCMs`);
+                const json = await res.json();
+                if (json.success) {
+                    setCmMasterList(json.data);
+                }
+            } catch (err) {
+                console.error('Error fetching CM list:', err);
+            }
+        };
+
+        fetchCMs();
     }, []);
 
     const handleRegionChange = (selectedOptions) => {
@@ -141,6 +159,12 @@ const Tickets = () => {
                 //     );
                 // }
 
+                const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
+                setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+
+                const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
+                setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+
                 // updating the globalMetric every time when a filter is applied
                 setGlobalMetrics(
                     json.metrics || {
@@ -176,6 +200,7 @@ const Tickets = () => {
     }, []);
 
     const [timers, setTimers] = useState({});
+
     useEffect(() => {
         const interval = setInterval(() => {
             const newTimers = {};
@@ -201,7 +226,7 @@ const Tickets = () => {
                 };
             });
 
-            setSlaTimers(newTimers);
+            setSlatimers(newTimers);
         }, 1000);
 
         return () => clearInterval(interval);
@@ -439,7 +464,74 @@ const Tickets = () => {
                 }
             },
         },
-        ...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+        //...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+        ...(Number(user?.role) !== 1
+            ? [
+                  {
+                      label: 'Name of CM',
+                      key: 'CM_name',
+                      render: (row) =>
+                          row.status === 'Closed' ? (
+                              // If ticket is Closed dropdoe
+                              <span>{row.CM_name || '—'}</span>
+                          ) : (
+                              <Select
+                                  options={cmMasterList.map((cm) => ({
+                                      value: cm.userId,
+                                      label: cm.name,
+                                  }))}
+                                  value={
+                                      row.CM_name
+                                          ? {
+                                                label: row.CM_name,
+                                                value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+                                            }
+                                          : null
+                                  }
+                                  isClearable={false}
+                                  classNamePrefix="react-select"
+                                  styles={{
+                                      container: (base) => ({
+                                          ...base,
+                                          minWidth: 200,
+                                      }),
+                                      menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                                  }}
+                                  onChange={async (selectedOption) => {
+                                      if (selectedOption?.value) {
+                                          try {
+                                              // 1. PUT request with ticketKey + userId
+                                              const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+                                                  method: 'PUT',
+                                                  headers: {
+                                                      'Content-Type': 'application/json',
+                                                  },
+                                                  body: JSON.stringify({
+                                                      ticketKey: row.ticketKey,
+                                                      userId: selectedOption.value,
+                                                  }),
+                                              });
+
+                                              const updateResult = await response.json();
+
+                                              if (updateResult?.ticket) {
+                                                  console.log('CM updated:', updateResult);
+
+                                                  // 2. Patch the updated row locally
+                                                  setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket)));
+                                              } else {
+                                                  console.error('Failed to update CM', updateResult);
+                                              }
+                                          } catch (error) {
+                                              console.error('Error updating CM:', error);
+                                          }
+                                      }
+                                  }}
+                              />
+                          ),
+                  },
+              ]
+            : []),
         {
             label: 'Name of AM',
             key: 'AM_name',
