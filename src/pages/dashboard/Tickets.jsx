@@ -491,6 +491,14 @@ const Tickets = () => {
                 }
             },
         },
+        {
+            label: 'Start Date',
+            key: 'startDateTime',
+        },
+        {
+            label: 'End Date',
+            key: 'endDateTime',
+        },
         //...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
         ...(Number(user?.role) !== 1
             ? [
