@@ -25,6 +25,7 @@ const Tickets = () => {
 
     const [allTicketsData, setAllTicketsData] = useState([]);
     const [cmOptions, setCmOptions] = useState([]);
+    const [cmMasterList, setCmMasterList] = useState([]);
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
 
     const [globalMetrics, setGlobalMetrics] = useState({
@@ -43,12 +44,31 @@ const Tickets = () => {
     const [totalPages, setTotalPages] = useState(1);
 
     const [dropdownData, setDropdownData] = useState([]);
+    const [taskOptions, setTaskOptions] = useState([]);
+    const [taskDropdown, setTaskDropdown] = useState([]);
 
     useEffect(() => {
         const userData = JSON.parse(localStorage.getItem('user')); // stored after login
         if (userData?.role !== undefined) {
             setRole(userData.role);
         }
+    }, []);
+
+    //Fetching all the CM's
+    useEffect(() => {
+        const fetchCMs = async () => {
+            try {
+                const res = await fetch(`http://localhost:5000/api/getCMs`);
+                const json = await res.json();
+                if (json.success) {
+                    setCmMasterList(json.data);
+                }
+            } catch (err) {
+                console.error('Error fetching CM list:', err);
+            }
+        };
+
+        fetchCMs();
     }, []);
 
     const handleRegionChange = (selectedOptions) => {
@@ -141,6 +161,12 @@ const Tickets = () => {
                 //     );
                 // }
 
+                const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
+                setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+
+                const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
+                setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+
                 // updating the globalMetric every time when a filter is applied
                 setGlobalMetrics(
                     json.metrics || {
@@ -176,6 +202,7 @@ const Tickets = () => {
     }, []);
 
     const [timers, setTimers] = useState({});
+
     useEffect(() => {
         const interval = setInterval(() => {
             const newTimers = {};
@@ -201,17 +228,11 @@ const Tickets = () => {
                 };
             });
 
-            setSlaTimers(newTimers);
+            setSlatimers(newTimers);
         }, 1000);
 
         return () => clearInterval(interval);
     }, [projects]);
-
-    const [metrics, setMetrics] = useState({
-        totalTickets: 0,
-        assignedTickets: 0,
-        closedTickets: 0,
-    });
 
     useEffect(() => {
         setTotalCount(projects.length);
@@ -246,6 +267,37 @@ const Tickets = () => {
         const uniqueTickets = Array.from(new Set(filteredByCm.map((t) => t.ticketKey))).filter(Boolean);
         setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
     }, [selectedRegions, selectedCM, allTicketsData]);
+
+    useEffect(() => {
+        async function loadTaskDropdown() {
+            try {
+                const res = await fetch('http://localhost:5000/api/tasks/TaskDropdown');
+                const data = await res.json();
+                // Add a unique taskId to each for API usage
+                const dataWithIds = data.map((item, index) => ({
+                    ...item,
+                    taskId: `TSKID-${String(index + 1).padStart(7, '0')}`,
+                }));
+                setTaskDropdown(dataWithIds);
+            } catch (err) {
+                console.error('⛔ Error fetching TaskDropdown:', err);
+            }
+        }
+        loadTaskDropdown();
+    }, []);
+
+    useEffect(() => {
+        fetch('http://localhost:5000/api/tasks/TaskDropdown')
+            .then((res) => res.json())
+            .then((data) => {
+                const uniqueTypes = [...new Set(data?.map((item) => item.taskType))].map((t) => ({
+                    value: t,
+                    label: t,
+                }));
+                setTaskOptions(uniqueTypes);
+            })
+            .catch((err) => console.error('❌ Failed to fetch task types:', err));
+    }, []);
 
     function CountdownTimer({ timeRemaining }) {
         const parseTimeToSeconds = (timeStr) => {
@@ -439,11 +491,187 @@ const Tickets = () => {
                 }
             },
         },
-        ...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+        //...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+        ...(Number(user?.role) !== 1
+            ? [
+                  {
+                      label: 'Name of CM',
+                      key: 'CM_name',
+                      render: (row) =>
+                          row.status === 'Closed' ? (
+                              // If ticket is Closed dropdoe
+                              <span>{row.CM_name || '—'}</span>
+                          ) : (
+                              <Select
+                                  options={cmMasterList.map((cm) => ({
+                                      value: cm.userId,
+                                      label: cm.name,
+                                  }))}
+                                  value={
+                                      row.CM_name
+                                          ? {
+                                                label: row.CM_name,
+                                                value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+                                            }
+                                          : null
+                                  }
+                                  isClearable={false}
+                                  classNamePrefix="react-select"
+                                  styles={{
+                                      container: (base) => ({
+                                          ...base,
+                                          minWidth: 200,
+                                      }),
+                                      menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                                  }}
+                                  onChange={async (selectedOption) => {
+                                      if (selectedOption?.value) {
+                                          try {
+                                              // 1. PUT request with ticketKey + userId
+                                              const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+                                                  method: 'PUT',
+                                                  headers: {
+                                                      'Content-Type': 'application/json',
+                                                  },
+                                                  body: JSON.stringify({
+                                                      ticketKey: row.ticketKey,
+                                                      userId: selectedOption.value,
+                                                  }),
+                                              });
+
+                                              const updateResult = await response.json();
+
+                                              if (updateResult?.ticket) {
+                                                  console.log('CM updated:', updateResult);
+
+                                                  // 2. Patch the updated row locally
+                                                  setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket)));
+                                              } else {
+                                                  console.error('Failed to update CM', updateResult);
+                                              }
+                                          } catch (error) {
+                                              console.error('Error updating CM:', error);
+                                          }
+                                      }
+                                  }}
+                              />
+                          ),
+                  },
+              ]
+            : []),
         {
             label: 'Name of AM',
             key: 'AM_name',
         },
+
+        {
+            label: 'Task Type',
+            key: 'taskType',
+            render: (row, rowIndex) => {
+                const selectedTask = taskDropdown.find((opt) => opt.taskType === row.taskType) || null;
+
+                return (
+                    <Select
+                        options={taskDropdown}
+                        getOptionLabel={(opt) => opt.taskType}
+                        getOptionValue={(opt) => opt.taskId}
+                        value={selectedTask}
+                        placeholder="Select Task Type"
+                        isClearable
+                        classNamePrefix="react-select"
+                        styles={{
+                            container: (base) => ({ ...base, minWidth: 180 }),
+                            singleValue: (provided) => ({ ...provided, color: '#000' }),
+                            menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                        }}
+                        onChange={async (selectedOption) => {
+                            if (!selectedOption) return;
+
+                            // Update local state and clear sub-task
+                            const newProjects = [...projects];
+                            newProjects[rowIndex].taskType = selectedOption.taskType;
+                            newProjects[rowIndex].subTaskType = null;
+                            newProjects[rowIndex].taskId = selectedOption.taskId;
+                            setProjects(newProjects);
+
+                            // Check if there are subtasks for this task
+                            const hasSubTasks = taskDropdown.some((item) => item.taskType === selectedOption.taskType && item.subTaskType);
+
+                            if (!hasSubTasks) {
+                                // No subtasks → hit API immediately
+                                try {
+                                    const body = {
+                                        ticketKey: row.ticketKey,
+                                        taskId: selectedOption.taskId,
+                                        ticketId: row.ticketId,
+                                    };
+
+                                    await fetch(`http://localhost:5000/api/tasks/update-task`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(body),
+                                    });
+                                } catch (err) {
+                                    console.error('⛔ Error updating task type:', err);
+                                }
+                            }
+                        }}
+                    />
+                );
+            },
+        },
+
+        // Sub Task Type column
+        {
+            label: 'Sub Task Type',
+            key: 'subTaskType',
+            render: (row, rowIndex) => {
+                const options = taskDropdown.filter((item) => item.taskType === row.taskType && item.subTaskType).map((item) => ({ value: item.subTaskType, label: item.subTaskType }));
+
+                const uniqueOptions = Array.from(new Map(options.map((opt) => [opt.value, opt])).values());
+                const selectedSubTask = row.subTaskType ? uniqueOptions.find((opt) => opt.value === row.subTaskType) || null : null;
+
+                return (
+                    <Select
+                        options={uniqueOptions}
+                        value={selectedSubTask}
+                        placeholder={uniqueOptions.length > 0 ? 'Select Sub Task' : 'No Sub Task Available'}
+                        isClearable
+                        isDisabled={uniqueOptions.length === 0} // disable if no subtasks
+                        classNamePrefix="react-select"
+                        styles={{
+                            container: (base) => ({ ...base, minWidth: 180 }),
+                            singleValue: (provided) => ({ ...provided, color: '#000' }),
+                            menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                        }}
+                        onChange={async (selectedOption) => {
+                            const newProjects = [...projects];
+                            newProjects[rowIndex].subTaskType = selectedOption?.value || null;
+                            setProjects(newProjects);
+
+                            // Hit API with sub-task
+                            try {
+                                const body = {
+                                    ticketKey: row.ticketKey,
+                                    taskId: row.taskId,
+                                    ticketId: row.ticketId,
+                                    // subTaskType: selectedOption?.value || null,
+                                };
+
+                                await fetch(`http://localhost:5000/api/tasks/update-task`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(body),
+                                });
+                            } catch (err) {
+                                console.error('⛔ Error updating sub task type:', err);
+                            }
+                        }}
+                    />
+                );
+            },
+        },
+
         {
             label: 'Region',
             key: 'cm_region',
@@ -508,14 +736,26 @@ const Tickets = () => {
                                             setProjects(data.data); // Update the tickets list state
                                             setTotalPages(data.totalPages || 1); // Update pagination if needed
                                             // You can also update any metrics here if returned
+                                            setGlobalMetrics(
+                                                data.metrics || {
+                                                    totalTickets: 0,
+                                                    assignedTickets: 0,
+                                                    closedTickets: 0,
+                                                    startTickets: 0,
+                                                    interimTickets: 0,
+                                                    needMoreInfoTickets: 0,
+                                                    sentToVaoTickets: 0,
+                                                    solutionProvidedTickets: 0,
+                                                }
+                                            );
                                         } else {
-                                            console.error('❌ Failed to refresh ticket list');
+                                            console.error('Failed to refresh ticket list');
                                         }
                                     } else {
-                                        console.error('❌ Status update failed', updateResult.error);
+                                        console.error('Status update failed', updateResult.error);
                                     }
                                 } catch (error) {
-                                    console.error('⛔ Error during status update or fetching tickets:', error);
+                                    console.error('Error during status update or fetching tickets:', error);
                                 }
                             }
                         }}
@@ -523,6 +763,7 @@ const Tickets = () => {
                 );
             },
         },
+        
     ];
     const resetFilters = () => {
         setSelectedRegions([]);
@@ -706,14 +947,7 @@ const Tickets = () => {
 
                 {/* 4-4 div's in one row */}
 
-                <div
-                    className="metrics-grid"
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '8px',
-                    }}
-                >
+                <div className="metrics-grid">
                     {[
                         { label: 'Total', value: globalMetrics.totalTickets, color: 'warning', selectedStatusKey: '' },
                         { label: 'Assigned', value: globalMetrics.assignedTickets, color: 'danger', selectedStatusKey: 'Assigned' },
@@ -728,7 +962,10 @@ const Tickets = () => {
                         return (
                             <div
                                 key={idx}
-                                onClick={() => setSelectedStatus(isActive ? null : item.selectedStatusKey)}
+                                onClick={() => {
+                                    setSelectedStatus(isActive ? null : item.selectedStatusKey);
+                                    setPage(1);
+                                }}
                                 className={`card text-white p-3 bg-${item.color !== 'custom' ? item.color : ''}`}
                                 style={{
                                     textAlign: 'center',

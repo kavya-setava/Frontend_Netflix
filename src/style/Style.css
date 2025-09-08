@@ -45,3 +45,20 @@ body {
   background-color: #27ae60;
   border: none;
 }
+.metrics-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(1, 1fr); 
+}
+
+@media (min-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr); 
+  }
+}
+
+@media (min-width: 1000px) {
+  .metrics-grid {
+    grid-template-columns: repeat(4, 1fr); 
+  }
+}
