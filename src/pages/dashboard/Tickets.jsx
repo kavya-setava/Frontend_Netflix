@@ -27,6 +27,7 @@ const Tickets = () => {
     const [cmOptions, setCmOptions] = useState([]);
     const [cmMasterList, setCmMasterList] = useState([]);
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
+    //const [tickets, setTickets] = useState([]);
 
     const [globalMetrics, setGlobalMetrics] = useState({
         totalTickets: 0,
@@ -34,9 +35,9 @@ const Tickets = () => {
         closedTickets: 0,
         startTickets: 0,
         interimTickets: 0,
-        needMoreInfoTickets: 0,
-        sentToVaoTickets: 0,
-        solutionProvidedTickets: 0,
+        needmoreinformationTickets: 0,
+        senttovaoTickets: 0,
+        solutionprovidedTickets: 0,
     });
 
     const [projects, setProjects] = useState([]);
@@ -175,9 +176,9 @@ const Tickets = () => {
                         closedTickets: 0,
                         startTickets: 0,
                         interimTickets: 0,
-                        needMoreInfoTickets: 0,
-                        sentToVaoTickets: 0,
-                        solutionProvidedTickets: 0,
+                        needmoreinformationTickets: 0,
+                        senttovaoTickets: 0,
+                        solutionprovidedTickets: 0,
                     }
                 );
             }
@@ -202,11 +203,11 @@ const Tickets = () => {
     }, []);
 
     const [timers, setTimers] = useState({});
-
+    
     useEffect(() => {
         const interval = setInterval(() => {
             const newTimers = {};
-
+            
             tickets.forEach((ticket) => {
                 // Assuming you have a SLA start timestamp (example: ticket.createdAt)
                 const slaStartTime = new Date(ticket.createdAt).getTime();
@@ -439,8 +440,8 @@ const Tickets = () => {
                     return isNegative ? -total : total;
                 };
 
-                // const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
-                const totalSeconds = parseToSeconds(row.SLA);
+                const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
+                //const totalSeconds = parseToSeconds(row.SLA);
 
                 let color = 'green';
 
@@ -450,33 +451,40 @@ const Tickets = () => {
                     return (
                         <span style={{ color }}>
                             <span style={{ fontWeight: 'bold' }}>
-                                {/* {row.slaData.timeRemaining} */}
-                                {row.SLA}
+                                {row.slaData.timeRemaining}
+                                {/*row.SLA*/}
                             </span>
+                        </span>
+                    );
+                }  else if (totalSeconds == 0) {
+                    color = 'green'; // overdue
+                    return (
+                        <span style={{ color }}>
+                            <strong>{row.slaData.timeRemaining}</strong>
                         </span>
                     );
                 } else if (totalSeconds < 0) {
                     color = 'red'; // overdue
                     return (
                         <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
+                            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+                            {/* <CountdownTimer timeRemaining={row.SLA} /> */}
                         </span>
                     );
                 } else if (totalSeconds <= 1800) {
                     color = 'red'; // 30 min or less
                     return (
                         <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
+                            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+                            {/* <CountdownTimer timeRemaining={row.SLA} /> */}
                         </span>
                     );
                 } else if (totalSeconds <= 2700 && totalSeconds > 1800) {
                     color = 'orange'; // 45–30 min
                     return (
                         <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
+                            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+                            {/* <CountdownTimer timeRemaining={row.SLA} /> */}
                         </span>
                     );
                 } else {
@@ -484,8 +492,8 @@ const Tickets = () => {
                     //console.log(row);
                     return (
                         <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
+                            <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+                            {/* <CountdownTimer timeRemaining={row.SLA} /> */}
                         </span>
                     );
                 }
@@ -751,9 +759,9 @@ const Tickets = () => {
                                                     closedTickets: 0,
                                                     startTickets: 0,
                                                     interimTickets: 0,
-                                                    needMoreInfoTickets: 0,
-                                                    sentToVaoTickets: 0,
-                                                    solutionProvidedTickets: 0,
+                                                    needmoreinformationTickets: 0,
+                                                    senttovaoTickets: 0,
+                                                    solutionprovidedTickets: 0,
                                                 }
                                             );
                                         } else {
@@ -962,9 +970,9 @@ const Tickets = () => {
                         { label: 'Closed', value: globalMetrics.closedTickets, color: 'success', selectedStatusKey: 'Closed' },
                         { label: 'Start', value: globalMetrics.startTickets, color: 'primary', selectedStatusKey: 'Start' },
                         { label: 'Interim', value: globalMetrics.interimTickets, color: 'secondary', selectedStatusKey: 'Interim' },
-                        { label: 'Need More Info', value: globalMetrics.needMoreInfoTickets, color: 'info', selectedStatusKey: 'Need More Information' },
-                        { label: 'Sent to VAO', value: globalMetrics.sentToVaoTickets, color: 'custom', selectedStatusKey: 'Sent to VAO' },
-                        { label: 'Solution Provided', value: globalMetrics.solutionProvidedTickets, color: 'dark', selectedStatusKey: 'Solution Provided' },
+                        { label: 'Need More Info', value: globalMetrics.needmoreinformationTickets, color: 'info', selectedStatusKey: 'Need More Information' },
+                        { label: 'Sent to VAO', value: globalMetrics.senttovaoTickets, color: 'custom', selectedStatusKey: 'Sent to VAO' },
+                        { label: 'Solution Provided', value: globalMetrics.solutionprovidedTickets, color: 'dark', selectedStatusKey: 'Solution Provided' },
                     ].map((item, idx) => {
                         const isActive = selectedStatus === item.selectedStatusKey;
                         return (
