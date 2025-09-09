@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReusableTable from '../../components/table/ReusableTable';
+import ReusableModal from '../../components/Popup/ReusableModal';
 import Select from 'react-select';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../style/Style.css';
@@ -47,6 +48,9 @@ const Tickets = () => {
     const [dropdownData, setDropdownData] = useState([]);
     const [taskOptions, setTaskOptions] = useState([]);
     const [taskDropdown, setTaskDropdown] = useState([]);
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalData, setModalData] = useState(null);
 
     useEffect(() => {
         const userData = JSON.parse(localStorage.getItem('user')); // stored after login
@@ -100,6 +104,18 @@ const Tickets = () => {
         setEndDate(date);
         setPage(1); // Reset page to 1
         setPaginationGroup(0);
+    };
+    const handleOpenModal = (row) => {
+        setModalData({
+            ticketKey: row.ticketKey,
+            CM_name: row.CM_name || '—',
+        });
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setModalData(null);
     };
 
     const regionOptions = [
@@ -203,11 +219,11 @@ const Tickets = () => {
     }, []);
 
     const [timers, setTimers] = useState({});
-    
+
     useEffect(() => {
         const interval = setInterval(() => {
             const newTimers = {};
-            
+
             tickets.forEach((ticket) => {
                 // Assuming you have a SLA start timestamp (example: ticket.createdAt)
                 const slaStartTime = new Date(ticket.createdAt).getTime();
@@ -334,11 +350,12 @@ const Tickets = () => {
 
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
     }
+
     const columns = [
         // {
-        //   label: 'S. No',
-        //   key: 'sno',
-        //   render: (_, index) => index + 1
+        //     label: 'S. No',
+        //     key: 'sno',
+        //     render: (_, index) => index + 1,
         // },
         {
             label: 'Ticket ID',
@@ -398,6 +415,66 @@ const Tickets = () => {
                 return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
             },
         },
+
+        // {
+        //     label: (
+        //         <div>
+        //             End Time <br />
+        //             <small style={{ fontWeight: 'normal' }}>(As per SLA - Reverse Countdown)</small>
+        //         </div>
+        //     ),
+        //     key: 'SLA',
+        //     render: (row) => {
+        //         const timeStr = row?.slaData?.timeRemaining;
+
+        //         // Fallback if SLA missing
+        //         if (!timeStr) {
+        //             return <span style={{ color: 'gray' }}>--:--:--</span>;
+        //         }
+
+        //         // Parse "HH:MM:SS" or "-HH:MM:SS" → total seconds
+        //         const parseToSeconds = (timeStr) => {
+        //             const isNegative = timeStr.startsWith('-');
+        //             const cleanTime = timeStr.replace('-', '');
+        //             const parts = cleanTime.split(':').map(Number);
+
+        //             if (parts.length !== 3) return 0;
+
+        //             const [hh, mm, ss] = parts;
+        //             const total = hh * 3600 + mm * 60 + ss;
+        //             return isNegative ? -total : total;
+        //         };
+
+        //         const totalSeconds = parseToSeconds(timeStr);
+
+        //         // Default green
+        //         let color = 'green';
+
+        //         // Special statuses → always green, show static SLA
+        //         if (row.status === 'Need More Information' || row.status === 'Closed' || row.status === 'Sent to VAO') {
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <strong>{timeStr}</strong>
+        //                 </span>
+        //             );
+        //         }
+
+        //         // SLA coloring rules
+        //         if (totalSeconds < 0) {
+        //             color = 'red'; // overdue
+        //         } else if (totalSeconds <= 1800) {
+        //             color = 'red'; // <= 30 min
+        //         } else if (totalSeconds <= 2700) {
+        //             color = 'orange'; // 45–30 min
+        //         }
+
+        //         return (
+        //             <span style={{ color }}>
+        //                 <CountdownTimer timeRemaining={timeStr} />
+        //             </span>
+        //         );
+        //     },
+        // },
 
         {
             label: (
@@ -507,6 +584,7 @@ const Tickets = () => {
             label: 'End Date',
             key: 'endDateTime',
         },
+
         //...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
         ...(Number(user?.role) !== 1
             ? [
@@ -780,7 +858,25 @@ const Tickets = () => {
             },
         },
         
+        {
+            label: 'Last Comment Added',
+            key: 'lastComment',
+            render: (row) => (
+                <button
+                    onClick={() => handleOpenModal(row)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                    }}
+                    title="View details"
+                >
+                    ℹ️
+                </button>
+            ),
+        },
     ];
+
     const resetFilters = () => {
         setSelectedRegions([]);
         setSelectedCM([]);
@@ -963,6 +1059,15 @@ const Tickets = () => {
 
                 {/* 4-4 div's in one row */}
 
+                {/* "totalTickets": 7661,
+        "assignedTickets": 2665,
+        "closedTickets": 106,
+        "startTickets": 5,
+        "interimTickets": 7,
+        "needmoreinformationTickets": 27,
+        "senttovaoTickets": 12,
+        "solutionprovidedTickets": 16 */}
+
                 <div className="metrics-grid">
                     {[
                         { label: 'Total', value: globalMetrics.totalTickets, color: 'warning', selectedStatusKey: '' },
@@ -1085,6 +1190,17 @@ const Tickets = () => {
                 </div>
 
                 {projects.length === 0 ? <div className="text-center text-muted py-4 fw-bold fs-5">No Data Available</div> : <ReusableTable columns={columns} data={projects} />}
+
+                {/* Last Comment pop-up */}
+
+                <ReusableModal isOpen={modalOpen} onClose={handleCloseModal} title="">
+                    <p>
+                        <strong>Ticket ID:</strong> {modalData?.ticketKey}
+                    </p>
+                    <p>
+                        <strong>CM Name:</strong> {modalData?.CM_name}
+                    </p>
+                </ReusableModal>
 
                 <div className="flex justify-content-center align-items-center mt-4 gap-2 flex-wrap" style={{ justifyContent: 'end' }}>
                     {getPageNumbers().map((p) => (
