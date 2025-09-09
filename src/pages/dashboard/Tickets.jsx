@@ -351,11 +351,11 @@ const Tickets = () => {
     }
 
     const columns = [
-        {
-            label: 'S. No',
-            key: 'sno',
-            render: (_, index) => index + 1,
-        },
+        // {
+        //     label: 'S. No',
+        //     key: 'sno',
+        //     render: (_, index) => index + 1,
+        // },
         {
             label: 'Ticket ID',
             key: 'ticketKey',
