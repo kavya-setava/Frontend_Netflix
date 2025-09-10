@@ -45,10 +45,9 @@ body {
   background-color: #27ae60;
   border: none;
 }
-
 .metrics-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.5rem;
   grid-template-columns: repeat(1, 1fr); 
 }
 

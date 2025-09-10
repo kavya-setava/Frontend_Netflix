@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReusableTable from '../../components/table/ReusableTable';
+import ReusableModal from '../../components/Popup/ReusableModal';
 import Select from 'react-select';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../style/Style.css';
@@ -25,7 +26,9 @@ const Tickets = () => {
 
     const [allTicketsData, setAllTicketsData] = useState([]);
     const [cmOptions, setCmOptions] = useState([]);
+    const [cmMasterList, setCmMasterList] = useState([]);
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
+    //const [tickets, setTickets] = useState([]);
 
     const [globalMetrics, setGlobalMetrics] = useState({
         totalTickets: 0,
@@ -33,9 +36,9 @@ const Tickets = () => {
         closedTickets: 0,
         startTickets: 0,
         interimTickets: 0,
-        needMoreInfoTickets: 0,
-        sentToVaoTickets: 0,
-        solutionProvidedTickets: 0,
+        needmoreinformationTickets: 0,
+        senttovaoTickets: 0,
+        solutionprovidedTickets: 0,
     });
 
     const [projects, setProjects] = useState([]);
@@ -43,12 +46,34 @@ const Tickets = () => {
     const [totalPages, setTotalPages] = useState(1);
 
     const [dropdownData, setDropdownData] = useState([]);
+    const [taskOptions, setTaskOptions] = useState([]);
+    const [taskDropdown, setTaskDropdown] = useState([]);
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalData, setModalData] = useState(null);
 
     useEffect(() => {
         const userData = JSON.parse(localStorage.getItem('user')); // stored after login
         if (userData?.role !== undefined) {
             setRole(userData.role);
         }
+    }, []);
+
+    //Fetching all the CM's
+    useEffect(() => {
+        const fetchCMs = async () => {
+            try {
+                const res = await fetch(`http://localhost:5000/api/getCMs`);
+                const json = await res.json();
+                if (json.success) {
+                    setCmMasterList(json.data);
+                }
+            } catch (err) {
+                console.error('Error fetching CM list:', err);
+            }
+        };
+
+        fetchCMs();
     }, []);
 
     const handleRegionChange = (selectedOptions) => {
@@ -79,6 +104,18 @@ const Tickets = () => {
         setEndDate(date);
         setPage(1); // Reset page to 1
         setPaginationGroup(0);
+    };
+    const handleOpenModal = (row) => {
+        setModalData({
+            ticketKey: row.ticketKey,
+            CM_name: row.CM_name || '—',
+        });
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setModalData(null);
     };
 
     const regionOptions = [
@@ -124,24 +161,7 @@ const Tickets = () => {
                 setProjects(json.data);
                 setTotalPages(json.totalPages);
 
-                // Set the global metrics ONLY if it's the first page and no other filters are active.
-                // const isFirstLoad = page === 1 && !cmRegionList && !cmNameList && !ticketKeyList && !createdFrom && !createdTo;
-                // if (isFirstLoad) {
-                //     setGlobalMetrics(
-                //         json.metrics || {
-                //             totalTickets: 0,
-                //             assignedTickets: 0,
-                //             closedTickets: 0,
-                //             startTickets: 0,
-                //             interimTickets: 0,
-                //             needMoreInfoTickets: 0,
-                //             sentToVaoTickets: 0,
-                //             solutionProvidedTickets: 0,
-                //         }
-                //     );
-                // }
-
-                // updating the globalMetric every time when a filter is applied
+                // update metrics
                 setGlobalMetrics(
                     json.metrics || {
                         totalTickets: 0,
@@ -149,9 +169,9 @@ const Tickets = () => {
                         closedTickets: 0,
                         startTickets: 0,
                         interimTickets: 0,
-                        needMoreInfoTickets: 0,
-                        sentToVaoTickets: 0,
-                        solutionProvidedTickets: 0,
+                        needmoreinformationTickets: 0,
+                        senttovaoTickets: 0,
+                        solutionprovidedTickets: 0,
                     }
                 );
             }
@@ -160,22 +180,60 @@ const Tickets = () => {
         }
     };
 
+
     const fetchAllTicketsForDropdowns = async () => {
         try {
             const res = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&page=1&limit=999999`);
             const json = await res.json();
             if (json.success) {
                 setAllTicketsData(json.data);
+
+                // Populate initial region list
+                const uniqueRegions = Array.from(new Set(json.data.map((d) => d.region)));
+                setRegionOptions(uniqueRegions.map((r) => ({ value: r, label: r })));
             }
         } catch (err) {
             console.error('Failed to fetch all ticket data for dropdowns', err);
         }
     };
+
+    useEffect(() => {
+        if (!allTicketsData.length) return;
+
+        // Step 1: Filter data by selected regions
+        let filtered = [...allTicketsData];
+        if (selectedRegions.length > 0) {
+            const regionVals = selectedRegions.map((r) => r.value);
+            filtered = filtered.filter((t) => regionVals.includes(t.region));
+        }
+
+        // Step 2: Filter data by selected CMs
+        if (selectedCM.length > 0) {
+            const cmVals = selectedCM.map((c) => c.value);
+            filtered = filtered.filter((t) => cmVals.includes(t.CM_name));
+        }
+
+        // Step 3: Filter data by selected Tickets
+        if (selectedTicketId.length > 0) {
+            const ticketVals = selectedTicketId.map((t) => t.value);
+            filtered = filtered.filter((t) => ticketVals.includes(t.ticketKey));
+        }
+
+        // Derive available CMs from filtered dataset
+        const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
+        setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+
+        // Derive available tickets from filtered dataset
+        const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
+        setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+    }, [allTicketsData, selectedRegions, selectedCM, selectedTicketId]);
+
     useEffect(() => {
         fetchAllTicketsForDropdowns();
     }, []);
 
     const [timers, setTimers] = useState({});
+
     useEffect(() => {
         const interval = setInterval(() => {
             const newTimers = {};
@@ -201,17 +259,11 @@ const Tickets = () => {
                 };
             });
 
-            setSlaTimers(newTimers);
+            setSlatimers(newTimers);
         }, 1000);
 
         return () => clearInterval(interval);
     }, [projects]);
-
-    const [metrics, setMetrics] = useState({
-        totalTickets: 0,
-        assignedTickets: 0,
-        closedTickets: 0,
-    });
 
     useEffect(() => {
         setTotalCount(projects.length);
@@ -247,6 +299,37 @@ const Tickets = () => {
         setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
     }, [selectedRegions, selectedCM, allTicketsData]);
 
+    useEffect(() => {
+        async function loadTaskDropdown() {
+            try {
+                const res = await fetch('http://localhost:5000/api/tasks/TaskDropdown');
+                const data = await res.json();
+                // Add a unique taskId to each for API usage
+                const dataWithIds = data.map((item, index) => ({
+                    ...item,
+                    taskId: `TSKID-${String(index + 1).padStart(7, '0')}`,
+                }));
+                setTaskDropdown(dataWithIds);
+            } catch (err) {
+                console.error('⛔ Error fetching TaskDropdown:', err);
+            }
+        }
+        loadTaskDropdown();
+    }, []);
+
+    useEffect(() => {
+        fetch('http://localhost:5000/api/tasks/TaskDropdown')
+            .then((res) => res.json())
+            .then((data) => {
+                const uniqueTypes = [...new Set(data?.map((item) => item.taskType))].map((t) => ({
+                    value: t,
+                    label: t,
+                }));
+                setTaskOptions(uniqueTypes);
+            })
+            .catch((err) => console.error('❌ Failed to fetch task types:', err));
+    }, []);
+
     function CountdownTimer({ timeRemaining }) {
         const parseTimeToSeconds = (timeStr) => {
             // Example: "-108:05:41" → negative
@@ -281,11 +364,12 @@ const Tickets = () => {
 
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
     }
+
     const columns = [
         // {
-        //   label: 'S. No',
-        //   key: 'sno',
-        //   render: (_, index) => index + 1
+        //     label: 'S. No',
+        //     key: 'sno',
+        //     render: (_, index) => index + 1,
         // },
         {
             label: 'Ticket ID',
@@ -346,6 +430,167 @@ const Tickets = () => {
             },
         },
 
+        // {
+        //     label: (
+        //         <div>
+        //             End Time <br />
+        //             <small style={{ fontWeight: 'normal' }}>(As per SLA - Reverse Countdown)</small>
+        //         </div>
+        //     ),
+        //     key: 'SLA',
+        //     render: (row) => {
+        //         const timeStr = row?.slaData?.timeRemaining;
+
+        //         // Fallback if SLA missing
+        //         if (!timeStr) {
+        //             return <span style={{ color: 'gray' }}>--:--:--</span>;
+        //         }
+
+        //         // Parse "HH:MM:SS" or "-HH:MM:SS" → total seconds
+        //         const parseToSeconds = (timeStr) => {
+        //             const isNegative = timeStr.startsWith('-');
+        //             const cleanTime = timeStr.replace('-', '');
+        //             const parts = cleanTime.split(':').map(Number);
+
+        //             if (parts.length !== 3) return 0;
+
+        //             const [hh, mm, ss] = parts;
+        //             const total = hh * 3600 + mm * 60 + ss;
+        //             return isNegative ? -total : total;
+        //         };
+
+        //         const totalSeconds = parseToSeconds(timeStr);
+
+        //         // Default green
+        //         let color = 'green';
+
+        //         // Special statuses → always green, show static SLA
+        //         if (row.status === 'Need More Information' || row.status === 'Closed' || row.status === 'Sent to VAO') {
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <strong>{timeStr}</strong>
+        //                 </span>
+        //             );
+        //         }
+
+        //         // SLA coloring rules
+        //         if (totalSeconds < 0) {
+        //             color = 'red'; // overdue
+        //         } else if (totalSeconds <= 1800) {
+        //             color = 'red'; // <= 30 min
+        //         } else if (totalSeconds <= 2700) {
+        //             color = 'orange'; // 45–30 min
+        //         }
+
+        //         return (
+        //             <span style={{ color }}>
+        //                 <CountdownTimer timeRemaining={timeStr} />
+        //             </span>
+        //         );
+        //     },
+        // },
+
+        // {
+        //     label: (
+        //         <div>
+        //             End Time <br />
+        //             <small style={{ fontWeight: 'normal' }}>(As per SLA - Reverse Countdown)</small>
+        //         </div>
+        //     ),
+        //     key: 'SLA',
+        //     render: (row) => {
+        //         //console.log(row.slaData.timeRemaining);
+        //         // const timeStr = row.slaData.timeRemaining || '00:00:00';
+        //         // const [h, m, s] = timeStr.split(':').map(Number);
+        //         // const totalSeconds = h * 3600 + m * 60 + s;
+
+        //         // let color = 'green';
+        //         // if (totalSeconds <= 2700 && totalSeconds > 1800) color = 'orange';
+        //         // if (totalSeconds <= 1800) color = 'red';
+        //         // if(row.status == 'Need More Information' || row.status == 'Closed' || row.status == 'Sent to VAO'){
+        //         //   color = 'green';
+        //         //   return <span style={{ color, fontWeight: 'bold' }}>00:00:00</span>;
+        //         // }else{
+        //         //   //return <span style={{ color, fontWeight: 'bold' }}>{totalSeconds}</span>;
+        //         //   return <span style={{ color, fontWeight: 'bold' }}><CountdownTimer initialSeconds={totalSeconds} /></span>;
+        //         // }
+
+        //         // Convert "HH:MM:SS" or "-HH:MM:SS" to total seconds
+        //         const parseToSeconds = (timeStr) => {
+        //             if (!timeStr) return 0;
+
+        //             const isNegative = timeStr.startsWith('-');
+        //             const cleanTime = timeStr.replace('-', '');
+
+        //             const parts = cleanTime.split(':').map(Number);
+        //             let total = 0;
+        //             if (parts.length === 3) {
+        //                 const [hh, mm, ss] = parts;
+        //                 total = hh * 3600 + mm * 60 + ss;
+        //             }
+        //             return isNegative ? -total : total;
+        //         };
+
+        //         const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
+        //         //const totalSeconds = parseToSeconds(row.SLA);
+
+        //         let color = 'green';
+
+        //         // Special statuses override everything
+        //         if (row.status === 'Need More Information' || row.status === 'Closed' || row.status === 'Sent to VAO') {
+        //             color = 'green';
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <span style={{ fontWeight: 'bold' }}>
+        //                         {row.slaData.timeRemaining}
+        //                         {/*row.SLA*/}
+        //                     </span>
+        //                 </span>
+        //             );
+        //         } else if (totalSeconds == 0) {
+        //             color = 'green'; // overdue
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <strong>{row.slaData.timeRemaining}</strong>
+        //                 </span>
+        //             );
+        //         } else if (totalSeconds < 0) {
+        //             color = 'red'; // overdue
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
+        //                 </span>
+        //             );
+        //         } else if (totalSeconds <= 1800) {
+        //             color = 'red'; // 30 min or less
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
+        //                 </span>
+        //             );
+        //         } else if (totalSeconds <= 2700 && totalSeconds > 1800) {
+        //             color = 'orange'; // 45–30 min
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
+        //                 </span>
+        //             );
+        //         } else {
+        //             color = 'green'; // 45–30 min
+        //             //console.log(row);
+        //             return (
+        //                 <span style={{ color }}>
+        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
+        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
+        //                 </span>
+        //             );
+        //         }
+        //     },
+        // },
+
         {
             label: (
                 <div>
@@ -355,94 +600,375 @@ const Tickets = () => {
             ),
             key: 'SLA',
             render: (row) => {
-                //console.log(row.slaData.timeRemaining);
-                // const timeStr = row.slaData.timeRemaining || '00:00:00';
-                // const [h, m, s] = timeStr.split(':').map(Number);
-                // const totalSeconds = h * 3600 + m * 60 + s;
+                const timeStr = row?.slaData?.timeRemaining;
 
-                // let color = 'green';
-                // if (totalSeconds <= 2700 && totalSeconds > 1800) color = 'orange';
-                // if (totalSeconds <= 1800) color = 'red';
-                // if(row.status == 'Need More Information' || row.status == 'Closed' || row.status == 'Sent to VAO'){
-                //   color = 'green';
-                //   return <span style={{ color, fontWeight: 'bold' }}>00:00:00</span>;
-                // }else{
-                //   //return <span style={{ color, fontWeight: 'bold' }}>{totalSeconds}</span>;
-                //   return <span style={{ color, fontWeight: 'bold' }}><CountdownTimer initialSeconds={totalSeconds} /></span>;
-                // }
-
-                // Convert "HH:MM:SS" or "-HH:MM:SS" to total seconds
-                const parseToSeconds = (timeStr) => {
-                    if (!timeStr) return 0;
-
-                    const isNegative = timeStr.startsWith('-');
-                    const cleanTime = timeStr.replace('-', '');
-
-                    const parts = cleanTime.split(':').map(Number);
-                    let total = 0;
-                    if (parts.length === 3) {
-                        const [hh, mm, ss] = parts;
-                        total = hh * 3600 + mm * 60 + ss;
-                    }
-                    return isNegative ? -total : total;
-                };
-
-                // const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
-                const totalSeconds = parseToSeconds(row.SLA);
-
-                let color = 'green';
-
-                // Special statuses override everything
-                if (row.status === 'Need More Information' || row.status === 'Closed' || row.status === 'Sent to VAO') {
-                    color = 'green';
+                // Handle missing SLA safely
+                if (!row.slaData || !timeStr) {
                     return (
-                        <span style={{ color }}>
-                            <span style={{ fontWeight: 'bold' }}>
-                                {/* {row.slaData.timeRemaining} */}
-                                {row.SLA}
-                            </span>
-                        </span>
-                    );
-                } else if (totalSeconds < 0) {
-                    color = 'red'; // overdue
-                    return (
-                        <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
-                        </span>
-                    );
-                } else if (totalSeconds <= 1800) {
-                    color = 'red'; // 30 min or less
-                    return (
-                        <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
-                        </span>
-                    );
-                } else if (totalSeconds <= 2700 && totalSeconds > 1800) {
-                    color = 'orange'; // 45–30 min
-                    return (
-                        <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
-                        </span>
-                    );
-                } else {
-                    color = 'green'; // 45–30 min
-                    //console.log(row);
-                    return (
-                        <span style={{ color }}>
-                            {/* <CountdownTimer timeRemaining={row.slaData.timeRemaining} /> */}
-                            <CountdownTimer timeRemaining={row.SLA} />
+                        <span style={{ color: 'black' }}>
+                            <strong>00:00:00</strong>
                         </span>
                     );
                 }
+
+                // SLA Not Applicable → show static
+                if (row.slaData.deadline === 'N/A') {
+                    return (
+                        <span style={{ color: 'black' }}>
+                            <strong>00:00:00</strong>
+                        </span>
+                    );
+                }
+
+                // Convert HH:MM:SS / -HH:MM:SS to seconds
+                const parseToSeconds = (timeStr) => {
+                    const isNegative = timeStr.startsWith('-');
+                    const cleanTime = timeStr.replace('-', '');
+                    const parts = cleanTime.split(':').map(Number);
+                    if (parts.length !== 3) return 0;
+                    const [hh, mm, ss] = parts;
+                    const total = hh * 3600 + mm * 60 + ss;
+                    return isNegative ? -total : total;
+                };
+
+                const totalSeconds = parseToSeconds(timeStr);
+
+                let color = 'green';
+
+                // Special statuses → show static SLA
+                if (['Need More Information', 'Closed', 'Sent to VAO'].includes(row.status)) {
+                    return (
+                        <span style={{ color: 'green' }}>
+                            <strong>{timeStr}</strong>
+                        </span>
+                    );
+                }
+
+                // SLA coloring rules
+                if (totalSeconds < 0) {
+                    color = 'red'; // overdue
+                } else if (totalSeconds <= 1800) {
+                    color = 'red'; // ≤ 30 min
+                } else if (totalSeconds <= 2700) {
+                    color = 'orange'; // 45–30 min
+                }
+
+                return (
+                    <span style={{ color }}>
+                        <CountdownTimer timeRemaining={timeStr} />
+                    </span>
+                );
             },
         },
-        ...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+
+        {
+            label: 'Start Date',
+            key: 'startDateTime',
+        },
+        {
+            label: 'End Date',
+            key: 'endDateTime',
+        },
+
+        //...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
+        // ...(Number(user?.role) !== 1
+        //     ? [
+        //           {
+        //               label: 'Name of CM',
+        //               key: 'CM_name',
+        //               render: (row) =>
+        //                   row.status === 'Closed' ? (
+        //                       // If ticket is Closed dropdoe
+        //                       <span>{row.CM_name || '—'}</span>
+        //                   ) : (
+        //                       <Select
+        //                           options={cmMasterList.map((cm) => ({
+        //                               value: cm.userId,
+        //                               label: cm.name,
+        //                           }))}
+        //                           value={
+        //                               row.CM_name
+        //                                   ? {
+        //                                         label: row.CM_name,
+        //                                         value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+        //                                     }
+        //                                   : null
+        //                           }
+        //                           isClearable={false}
+        //                           classNamePrefix="react-select"
+        //                           styles={{
+        //                               container: (base) => ({
+        //                                   ...base,
+        //                                   minWidth: 200,
+        //                               }),
+        //                               menu: (provided) => ({ ...provided, zIndex: 9999 }),
+        //                           }}
+        //                           onChange={async (selectedOption) => {
+        //                               if (selectedOption?.value) {
+        //                                   try {
+        //                                       // 1. PUT request with ticketKey + userId
+        //                                       const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+        //                                           method: 'PUT',
+        //                                           headers: {
+        //                                               'Content-Type': 'application/json',
+        //                                           },
+        //                                           body: JSON.stringify({
+        //                                               ticketKey: row.ticketKey,
+        //                                               userId: selectedOption.value,
+        //                                           }),
+        //                                       });
+
+        //                                       const updateResult = await response.json();
+
+        //                                       if (updateResult?.ticket) {
+        //                                           console.log('CM updated:', updateResult);
+
+        //                                           // 2. Fetch fresh data from backend to sync state
+        //                                           const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+        //                                           const refreshedTicket = await refreshed.json();
+
+        //                                           // 3. Patch the updated row with backend data
+        //                                           setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? refreshedTicket : ticket)));
+        //                                       } else {
+        //                                           console.error('Failed to update CM', updateResult);
+        //                                       }
+        //                                   } catch (error) {
+        //                                       console.error('Error updating CM:', error);
+        //                                   }
+        //                               }
+        //                           }}
+        //                       />
+        //                   ),
+        //           },
+        //       ]
+        //     : []),
+
+        ...(Number(user?.role) !== 1
+            ? [
+                  {
+                      label: 'Name of CM',
+                      key: 'CM_name',
+                      render: (row) =>
+                          row.status === 'Closed' ? (
+                              <span>{row.CM_name || '—'}</span>
+                          ) : (
+                              <Select
+                                  options={cmMasterList.map((cm) => ({
+                                      value: cm.userId,
+                                      label: cm.name,
+                                  }))}
+                                  value={
+                                      row.CM_name
+                                          ? {
+                                                label: row.CM_name,
+                                                value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+                                            }
+                                          : null
+                                  }
+                                  isClearable={false}
+                                  classNamePrefix="react-select"
+                                  styles={{
+                                      container: (base) => ({
+                                          ...base,
+                                          minWidth: 200,
+                                      }),
+                                      menu: (provided) => ({
+                                          ...provided,
+                                          zIndex: 9999,
+                                      }),
+                                  }}
+                                  onChange={async (selectedOption) => {
+                                      if (selectedOption?.value) {
+                                          try {
+                                              // 1. PUT request
+                                              const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+                                                  method: 'PUT',
+                                                  headers: {
+                                                      'Content-Type': 'application/json',
+                                                  },
+                                                  body: JSON.stringify({
+                                                      ticketKey: row.ticketKey,
+                                                      userId: selectedOption.value,
+                                                  }),
+                                              });
+
+                                              const updateResult = await response.json();
+
+                                              if (updateResult?.ticket) {
+                                                  console.log('CM updated:', updateResult);
+
+                                                  // 2. Fetch fresh data
+                                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+                                                  const refreshedData = await refreshed.json();
+
+                                                  // 3. Find updated ticket
+                                                  const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                                  if (updatedTicket) {
+                                                      setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                                                  }
+                                              } else {
+                                                  console.error('Failed to update CM', updateResult);
+                                              }
+                                          } catch (error) {
+                                              console.error('Error updating CM:', error);
+                                          }
+                                      }
+                                  }}
+                              />
+                          ),
+                  },
+              ]
+            : []),
+
         {
             label: 'Name of AM',
             key: 'AM_name',
+        },
+
+        {
+            label: 'Task Type',
+            key: 'taskType',
+            render: (row, rowIndex) => {
+                const selectedTask = taskDropdown.find((opt) => opt.taskType === row.taskType) || null;
+
+                return (
+                    <Select
+                        options={taskDropdown}
+                        getOptionLabel={(opt) => opt.taskType}
+                        getOptionValue={(opt) => opt.taskId}
+                        value={selectedTask}
+                        placeholder="Select Task Type"
+                        isClearable
+                        classNamePrefix="react-select"
+                        styles={{
+                            container: (base) => ({ ...base, minWidth: 180 }),
+                            singleValue: (provided) => ({
+                                ...provided,
+                                color: '#000',
+                            }),
+                            menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                        }}
+                        onChange={async (selectedOption) => {
+                            if (!selectedOption) return;
+
+                            // Local patch
+                            const newProjects = [...projects];
+                            newProjects[rowIndex].taskType = selectedOption.taskType;
+                            newProjects[rowIndex].subTaskType = null;
+                            newProjects[rowIndex].taskId = selectedOption.taskId;
+                            setProjects(newProjects);
+
+                            const hasSubTasks = taskDropdown.some((item) => item.taskType === selectedOption.taskType && item.subTaskType);
+
+                            if (!hasSubTasks) {
+                                try {
+                                    // 1. PUT request
+                                    const body = {
+                                        ticketKey: row.ticketKey,
+                                        taskId: selectedOption.taskId,
+                                        ticketId: row.ticketId,
+                                    };
+
+                                    await fetch(`http://localhost:5000/api/tasks/update-task`, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify(body),
+                                    });
+
+                                    // 2. Fetch refreshed tickets
+                                    const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+                                    const refreshedData = await refreshed.json();
+
+                                    // 3. Find updated ticket
+                                    const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                    if (updatedTicket) {
+                                        setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                                    }
+                                } catch (err) {
+                                    console.error('⛔ Error updating task type:', err);
+                                }
+                            }
+                        }}
+                    />
+                );
+            },
+        },
+
+        // Sub Task Type column
+        {
+            label: 'Sub Task Type',
+            key: 'subTaskType',
+            render: (row, rowIndex) => {
+                const options = taskDropdown
+                    .filter((item) => item.taskType === row.taskType && item.subTaskType)
+                    .map((item) => ({
+                        value: item.subTaskType,
+                        label: item.subTaskType,
+                    }));
+
+                const uniqueOptions = Array.from(new Map(options.map((opt) => [opt.value, opt])).values());
+
+                const selectedSubTask = row.subTaskType ? uniqueOptions.find((opt) => opt.value === row.subTaskType) || null : null;
+
+                return (
+                    <Select
+                        options={uniqueOptions}
+                        value={selectedSubTask}
+                        placeholder={uniqueOptions.length > 0 ? 'Select Sub Task' : 'No Sub Task'}
+                        isClearable
+                        isDisabled={uniqueOptions.length === 0}
+                        classNamePrefix="react-select"
+                        styles={{
+                            container: (base) => ({ ...base, minWidth: 180 }),
+                            singleValue: (provided) => ({
+                                ...provided,
+                                color: '#000',
+                            }),
+                            menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                        }}
+                        onChange={async (selectedOption) => {
+                            const newProjects = [...projects];
+                            newProjects[rowIndex].subTaskType = selectedOption?.value || null;
+                            setProjects(newProjects);
+
+                            try {
+                                // 1. PUT request
+                                const body = {
+                                    ticketKey: row.ticketKey,
+                                    taskId: row.taskId,
+                                    ticketId: row.ticketId,
+                                    subTaskType: selectedOption?.value || null,
+                                };
+
+                                await fetch(`http://localhost:5000/api/tasks/update-task`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify(body),
+                                });
+
+                                // 2. Fetch refreshed tickets
+                                const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+                                const refreshedData = await refreshed.json();
+
+                                // 3. Find updated ticket
+                                const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                if (updatedTicket) {
+                                    setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                                }
+                            } catch (err) {
+                                console.error('⛔ Error updating sub task type:', err);
+                            }
+                        }}
+                    />
+                );
+            },
         },
         {
             label: 'Region',
@@ -508,14 +1034,26 @@ const Tickets = () => {
                                             setProjects(data.data); // Update the tickets list state
                                             setTotalPages(data.totalPages || 1); // Update pagination if needed
                                             // You can also update any metrics here if returned
+                                            setGlobalMetrics(
+                                                data.metrics || {
+                                                    totalTickets: 0,
+                                                    assignedTickets: 0,
+                                                    closedTickets: 0,
+                                                    startTickets: 0,
+                                                    interimTickets: 0,
+                                                    needmoreinformationTickets: 0,
+                                                    senttovaoTickets: 0,
+                                                    solutionprovidedTickets: 0,
+                                                }
+                                            );
                                         } else {
-                                            console.error('❌ Failed to refresh ticket list');
+                                            console.error('Failed to refresh ticket list');
                                         }
                                     } else {
-                                        console.error('❌ Status update failed', updateResult.error);
+                                        console.error('Status update failed', updateResult.error);
                                     }
                                 } catch (error) {
-                                    console.error('⛔ Error during status update or fetching tickets:', error);
+                                    console.error('Error during status update or fetching tickets:', error);
                                 }
                             }
                         }}
@@ -523,7 +1061,26 @@ const Tickets = () => {
                 );
             },
         },
+
+        {
+            label: 'Last Comment Added',
+            key: 'lastComment',
+            render: (row) => (
+                <button
+                    onClick={() => handleOpenModal(row)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                    }}
+                    title="View details"
+                >
+                    ℹ️
+                </button>
+            ),
+        },
     ];
+
     const resetFilters = () => {
         setSelectedRegions([]);
         setSelectedCM([]);
@@ -620,7 +1177,6 @@ const Tickets = () => {
                         <strong>Tickets List</strong>
                     </h1>
                 </div>
-
                 <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{ display: 'flex' }}>
                     {Number(user?.role) === 0 && (
                         <>
@@ -630,7 +1186,6 @@ const Tickets = () => {
                         </>
                     )}
                 </div>
-
                 {/* Count Cards */}
                 {/* <div className="d-flex flex-wrap gap-3 mb-4" style={{display:"flex"}}>
                   <div className="card text-white bg-warning p-3" style={{justifyContent:"center", minWidth:"150px", display:"flex" }}>
@@ -666,9 +1221,7 @@ const Tickets = () => {
                     <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.solutionProvidedTickets}</h4>
                   </div>
                 </div> */}
-
                 {/* Single Line with scroller */}
-
                 {/* <div
                       style={{
                         display: "flex",
@@ -703,32 +1256,29 @@ const Tickets = () => {
                         </div>
                       ))}
                 </div> */}
-
                 {/* 4-4 div's in one row */}
+                {/* "totalTickets": 7661, "assignedTickets": 2665, "closedTickets": 106, "startTickets": 5, "interimTickets": 7, "needmoreinformationTickets": 27, "senttovaoTickets": 12,
+                "solutionprovidedTickets": 16 */}
 
-                <div
-                    className="metrics-grid"
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '8px',
-                    }}
-                >
+                <div className="metrics-grid">
                     {[
                         { label: 'Total', value: globalMetrics.totalTickets, color: 'warning', selectedStatusKey: '' },
                         { label: 'Assigned', value: globalMetrics.assignedTickets, color: 'danger', selectedStatusKey: 'Assigned' },
                         { label: 'Closed', value: globalMetrics.closedTickets, color: 'success', selectedStatusKey: 'Closed' },
                         { label: 'Start', value: globalMetrics.startTickets, color: 'primary', selectedStatusKey: 'Start' },
                         { label: 'Interim', value: globalMetrics.interimTickets, color: 'secondary', selectedStatusKey: 'Interim' },
-                        { label: 'Need More Info', value: globalMetrics.needMoreInfoTickets, color: 'info', selectedStatusKey: 'Need More Information' },
-                        { label: 'Sent to VAO', value: globalMetrics.sentToVaoTickets, color: 'custom', selectedStatusKey: 'Sent to VAO' },
-                        { label: 'Solution Provided', value: globalMetrics.solutionProvidedTickets, color: 'dark', selectedStatusKey: 'Solution Provided' },
+                        { label: 'Need More Info', value: globalMetrics.needmoreinformationTickets, color: 'info', selectedStatusKey: 'Need More Information' },
+                        { label: 'Sent to VAO', value: globalMetrics.senttovaoTickets, color: 'custom', selectedStatusKey: 'Sent to VAO' },
+                        { label: 'Solution Provided', value: globalMetrics.solutionprovidedTickets, color: 'dark', selectedStatusKey: 'Solution Provided' },
                     ].map((item, idx) => {
                         const isActive = selectedStatus === item.selectedStatusKey;
                         return (
                             <div
                                 key={idx}
-                                onClick={() => setSelectedStatus(isActive ? null : item.selectedStatusKey)}
+                                onClick={() => {
+                                    setSelectedStatus(isActive ? null : item.selectedStatusKey);
+                                    setPage(1);
+                                }}
                                 className={`card text-white p-3 bg-${item.color !== 'custom' ? item.color : ''}`}
                                 style={{
                                     textAlign: 'center',
@@ -758,7 +1308,6 @@ const Tickets = () => {
                         );
                     })}
                 </div>
-
                 {/* Filter Section */}
                 <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{ display: 'flex' }}>
                     {Number(user?.role) === 0 && (
@@ -810,9 +1359,7 @@ const Tickets = () => {
                         </>
                     )}
                 </div>
-
                 {/* Download Button */}
-
                 <div className="d-flex gap-2 mb-5 mt-3" style={{ justifyContent: 'flex-end', display: 'flex' }}>
                     <button
                         className="d-flex align-items-center gap-2"
@@ -830,9 +1377,16 @@ const Tickets = () => {
                         Download Report
                     </button>
                 </div>
-
                 {projects.length === 0 ? <div className="text-center text-muted py-4 fw-bold fs-5">No Data Available</div> : <ReusableTable columns={columns} data={projects} />}
-
+                {/* Last Comment pop-up */}
+                <ReusableModal isOpen={modalOpen} onClose={handleCloseModal} title="">
+                    <p>
+                        <strong>Ticket ID:</strong> {modalData?.ticketKey}
+                    </p>
+                    <p>
+                        <strong>CM Name:</strong> {modalData?.CM_name}
+                    </p>
+                </ReusableModal>
                 <div className="flex justify-content-center align-items-center mt-4 gap-2 flex-wrap" style={{ justifyContent: 'end' }}>
                     {getPageNumbers().map((p) => (
                         <button key={p} className={`btn ${page === p ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setPage(p)}>
