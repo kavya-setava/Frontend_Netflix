@@ -28,7 +28,6 @@ const Tickets = () => {
     const [cmOptions, setCmOptions] = useState([]);
     const [cmMasterList, setCmMasterList] = useState([]);
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
-    //const [tickets, setTickets] = useState([]);
 
     const [globalMetrics, setGlobalMetrics] = useState({
         totalTickets: 0,
@@ -36,9 +35,9 @@ const Tickets = () => {
         closedTickets: 0,
         startTickets: 0,
         interimTickets: 0,
-        needmoreinformationTickets: 0,
-        senttovaoTickets: 0,
-        solutionprovidedTickets: 0,
+        needMoreInfoTickets: 0,
+        sentToVaoTickets: 0,
+        solutionProvidedTickets: 0,
     });
 
     const [projects, setProjects] = useState([]);
@@ -58,6 +57,9 @@ const Tickets = () => {
             setRole(userData.role);
         }
     }, []);
+
+
+    
 
     //Fetching all the CM's
     useEffect(() => {
@@ -143,42 +145,112 @@ const Tickets = () => {
         fetchTickets();
     }, [selectedRegions, selectedCM, selectedTicketId, startDate, endDate, page, selectedStatus]); // This hook reacts to all changes, ,assignedCount,totalCount,closedCount removed for correct count as per accuracy
 
-    const fetchTickets = async () => {
-        const cmRegionList = selectedRegions.map((r) => r.value).join(',');
-        const cmNameList = selectedCM.map((c) => c.value).join(',');
-        const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
-        const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
-        const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
+    // const fetchTickets = async () => {
+    //     const cmRegionList = selectedRegions.map((r) => r.value).join(',');
+    //     const cmNameList = selectedCM.map((c) => c.value).join(',');
+    //     const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
+    //     const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
+    //     const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
 
-        try {
-            const res = await fetch(
-                `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
-                    selectedStatus || ' '
-                }`
-            );
-            const json = await res.json();
-            if (json.success) {
-                setProjects(json.data);
-                setTotalPages(json.totalPages);
+    //     try {
+    //         const res = await fetch(
+    //             `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
+    //                 selectedStatus || ' '
+    //             }`
+    //         );
+    //         const json = await res.json();
+    //         if (json.success) {
+    //             setProjects(json.data);
+    //             setTotalPages(json.totalPages);
 
-                // update metrics
-                setGlobalMetrics(
-                    json.metrics || {
-                        totalTickets: 0,
-                        assignedTickets: 0,
-                        closedTickets: 0,
-                        startTickets: 0,
-                        interimTickets: 0,
-                        needmoreinformationTickets: 0,
-                        senttovaoTickets: 0,
-                        solutionprovidedTickets: 0,
-                    }
-                );
-            }
-        } catch (err) {
-            console.error('Error fetching data:', err);
+    //             // Set the global metrics ONLY if it's the first page and no other filters are active.
+    //             // const isFirstLoad = page === 1 && !cmRegionList && !cmNameList && !ticketKeyList && !createdFrom && !createdTo;
+    //             // if (isFirstLoad) {
+    //             //     setGlobalMetrics(
+    //             //         json.metrics || {
+    //             //             totalTickets: 0,
+    //             //             assignedTickets: 0,
+    //             //             closedTickets: 0,
+    //             //             startTickets: 0,
+    //             //             interimTickets: 0,
+    //             //             needMoreInfoTickets: 0,
+    //             //             sentToVaoTickets: 0,
+    //             //             solutionProvidedTickets: 0,
+    //             //         }
+    //             //     );
+    //             // }
+
+    //             const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
+    //             setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+
+    //             const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
+    //             setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+
+    //             // updating the globalMetric every time when a filter is applied
+    //             setGlobalMetrics(
+    //                 json.metrics || {
+    //                     totalTickets: 0,
+    //                     assignedTickets: 0,
+    //                     closedTickets: 0,
+    //                     startTickets: 0,
+    //                     interimTickets: 0,
+    //                     needMoreInfoTickets: 0,
+    //                     sentToVaoTickets: 0,
+    //                     solutionProvidedTickets: 0,
+    //                 }
+    //             );
+    //         }
+    //     } catch (err) {
+    //         console.error('Error fetching data:', err);
+    //     }
+    // };
+
+const fetchTickets = async () => {
+  const cmRegionList = selectedRegions.map((r) => r.value).join(',');
+  const cmNameList = selectedCM.map((c) => c.value).join(',');
+  const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
+  const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
+  const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
+
+  try {
+    const res = await fetch(
+      `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
+        selectedStatus || ' '
+      }`
+    );
+    const json = await res.json();
+
+    if (json.success) {
+      setProjects(json.data);
+      setTotalPages(json.totalPages);
+
+      // ✅ Only update cmOptions when NO CM filter is applied
+      if (!cmNameList) {
+        const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
+        setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+      }
+
+    //   const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
+    //   setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+
+      setGlobalMetrics(
+        json.metrics || {
+          totalTickets: 0,
+          assignedTickets: 0,
+          closedTickets: 0,
+          startTickets: 0,
+          interimTickets: 0,
+          needMoreInfoTickets: 0,
+          sentToVaoTickets: 0,
+          solutionProvidedTickets: 0,
         }
-    };
+      );
+    }
+  } catch (err) {
+    console.error('Error fetching data:', err);
+  }
+};
+
 
 
     const fetchAllTicketsForDropdowns = async () => {
@@ -187,47 +259,11 @@ const Tickets = () => {
             const json = await res.json();
             if (json.success) {
                 setAllTicketsData(json.data);
-
-                // Populate initial region list
-                const uniqueRegions = Array.from(new Set(json.data.map((d) => d.region)));
-                setRegionOptions(uniqueRegions.map((r) => ({ value: r, label: r })));
             }
         } catch (err) {
             console.error('Failed to fetch all ticket data for dropdowns', err);
         }
     };
-
-    useEffect(() => {
-        if (!allTicketsData.length) return;
-
-        // Step 1: Filter data by selected regions
-        let filtered = [...allTicketsData];
-        if (selectedRegions.length > 0) {
-            const regionVals = selectedRegions.map((r) => r.value);
-            filtered = filtered.filter((t) => regionVals.includes(t.region));
-        }
-
-        // Step 2: Filter data by selected CMs
-        if (selectedCM.length > 0) {
-            const cmVals = selectedCM.map((c) => c.value);
-            filtered = filtered.filter((t) => cmVals.includes(t.CM_name));
-        }
-
-        // Step 3: Filter data by selected Tickets
-        if (selectedTicketId.length > 0) {
-            const ticketVals = selectedTicketId.map((t) => t.value);
-            filtered = filtered.filter((t) => ticketVals.includes(t.ticketKey));
-        }
-
-        // Derive available CMs from filtered dataset
-        const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
-        setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
-
-        // Derive available tickets from filtered dataset
-        const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
-        setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
-    }, [allTicketsData, selectedRegions, selectedCM, selectedTicketId]);
-
     useEffect(() => {
         fetchAllTicketsForDropdowns();
     }, []);
@@ -1177,6 +1213,7 @@ const Tickets = () => {
                         <strong>Tickets List</strong>
                     </h1>
                 </div>
+
                 <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{ display: 'flex' }}>
                     {Number(user?.role) === 0 && (
                         <>
@@ -1186,6 +1223,7 @@ const Tickets = () => {
                         </>
                     )}
                 </div>
+
                 {/* Count Cards */}
                 {/* <div className="d-flex flex-wrap gap-3 mb-4" style={{display:"flex"}}>
                   <div className="card text-white bg-warning p-3" style={{justifyContent:"center", minWidth:"150px", display:"flex" }}>
@@ -1221,7 +1259,9 @@ const Tickets = () => {
                     <h4 style={{fontWeight:"bold",fontSize:"1.2rem"}}>  {globalMetrics.solutionProvidedTickets}</h4>
                   </div>
                 </div> */}
+
                 {/* Single Line with scroller */}
+
                 {/* <div
                       style={{
                         display: "flex",
@@ -1256,9 +1296,17 @@ const Tickets = () => {
                         </div>
                       ))}
                 </div> */}
+
                 {/* 4-4 div's in one row */}
-                {/* "totalTickets": 7661, "assignedTickets": 2665, "closedTickets": 106, "startTickets": 5, "interimTickets": 7, "needmoreinformationTickets": 27, "senttovaoTickets": 12,
-                "solutionprovidedTickets": 16 */}
+
+                {/* "totalTickets": 7661,
+        "assignedTickets": 2665,
+        "closedTickets": 106,
+        "startTickets": 5,
+        "interimTickets": 7,
+        "needmoreinformationTickets": 27,
+        "senttovaoTickets": 12,
+        "solutionprovidedTickets": 16 */}
 
                 <div className="metrics-grid">
                     {[
@@ -1308,6 +1356,7 @@ const Tickets = () => {
                         );
                     })}
                 </div>
+
                 {/* Filter Section */}
                 <div className="d-flex gap-3 mt-4 flex-wrap align-items-center" style={{ display: 'flex' }}>
                     {Number(user?.role) === 0 && (
@@ -1359,7 +1408,9 @@ const Tickets = () => {
                         </>
                     )}
                 </div>
+
                 {/* Download Button */}
+
                 <div className="d-flex gap-2 mb-5 mt-3" style={{ justifyContent: 'flex-end', display: 'flex' }}>
                     <button
                         className="d-flex align-items-center gap-2"
@@ -1377,8 +1428,11 @@ const Tickets = () => {
                         Download Report
                     </button>
                 </div>
+
                 {projects.length === 0 ? <div className="text-center text-muted py-4 fw-bold fs-5">No Data Available</div> : <ReusableTable columns={columns} data={projects} />}
+
                 {/* Last Comment pop-up */}
+
                 <ReusableModal isOpen={modalOpen} onClose={handleCloseModal} title="">
                     <p>
                         <strong>Ticket ID:</strong> {modalData?.ticketKey}
@@ -1387,6 +1441,7 @@ const Tickets = () => {
                         <strong>CM Name:</strong> {modalData?.CM_name}
                     </p>
                 </ReusableModal>
+
                 <div className="flex justify-content-center align-items-center mt-4 gap-2 flex-wrap" style={{ justifyContent: 'end' }}>
                     {getPageNumbers().map((p) => (
                         <button key={p} className={`btn ${page === p ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setPage(p)}>
