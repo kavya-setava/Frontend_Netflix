@@ -834,7 +834,7 @@ const fetchTickets = async () => {
                                                   console.log('CM updated:', updateResult);
 
                                                   // 2. Fetch fresh data
-                                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+                                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
                                                   const refreshedData = await refreshed.json();
 
                                                   // 3. Find updated ticket
@@ -915,7 +915,7 @@ const fetchTickets = async () => {
                                     });
 
                                     // 2. Fetch refreshed tickets
-                                    const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+                                    const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
                                     const refreshedData = await refreshed.json();
 
                                     // 3. Find updated ticket
@@ -989,7 +989,7 @@ const fetchTickets = async () => {
                                 });
 
                                 // 2. Fetch refreshed tickets
-                                const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
+                                const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
                                 const refreshedData = await refreshed.json();
 
                                 // 3. Find updated ticket
