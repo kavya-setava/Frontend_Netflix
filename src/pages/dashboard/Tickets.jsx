@@ -274,7 +274,7 @@ const Tickets = () => {
 
         const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
         setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
-    }, [allTicketsData, selectedRegions, selectedCM ]);
+    }, [allTicketsData, selectedRegions, selectedCM]);
 
     const fetchAllTicketsForDropdowns = async () => {
         try {
@@ -568,71 +568,19 @@ const Tickets = () => {
                       key: 'CM_name',
                       render: (row) =>
                           row.status === 'Closed' ? (
-                              // If ticket is Closed dropdoe
                               <span>{row.CM_name || '—'}</span>
                           ) : (
-                              //                              <Select
-                              //   options={cmMasterList.map((cm) => ({
-                              //     value: cm.name,
-                              //     label: cm.name,
-                              //   }))}
-                              //   value={
-                              //     row.CM_name
-                              //       ? cmMasterList.find((cm) => cm.name === row.CM_name)
-                              //           ? { value: row.CM_name, label: row.CM_name }
-                              //           : null
-                              //       : null
-                              //   }
-                              //   isClearable={false}
-                              //   classNamePrefix="react-select"
-                              //   styles={{
-                              //     container: (base) => ({
-                              //       ...base,
-                              //       minWidth: 200,
-                              //     }),
-                              //     menu: (provided) => ({ ...provided, zIndex: 9999 }),
-                              //   }}
-                              //   onChange={async (selectedOption) => {
-                              //     console.log(row.ticketKey,selectedOption)
-                              //     if (selectedOption?.value) {
-                              //       try {
-                              //         const response = await fetch('http://localhost:5000/api/update-backup-cm', {
-                              //           method: 'PUT',
-                              //           headers: { 'Content-Type': 'application/json' },
-                              //           body: JSON.stringify({
-                              //             // ticketKey: row.ticketKey,
-                              //             // userId: selectedOption.value,
-                              //             "ticketKey":"AC-72465",
-                              //     "userId":"User-000087"
-                              //           }),
-                              //         });
-
-                              //         const updateResult = await response.json();
-
-                              //         if (updateResult?.ticket) {
-                              //           setProjects((prev) =>
-                              //             prev.map((ticket) =>
-                              //               ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket
-                              //             )
-                              //           );
-                              //         }
-                              //       } catch (error) {
-                              //         console.error('Error updating CM:', error);
-                              //       }
-                              //     }
-                              //   }}
-                              // />
-
                               <Select
                                   options={cmMasterList.map((cm) => ({
-                                      value: cm.userId, // Use userId as value
-                                      label: cm.name, // Show name as label
+                                      value: cm.userId,
+                                      label: cm.name,
                                   }))}
                                   value={
                                       row.CM_name
-                                          ? cmMasterList.find((cm) => cm.name === row.CM_name)
-                                              ? { value: row.userId, label: row.CM_name } // Use userId for value
-                                              : null
+                                          ? {
+                                                label: row.CM_name,
+                                                value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+                                            }
                                           : null
                                   }
                                   isClearable={false}
@@ -642,24 +590,43 @@ const Tickets = () => {
                                           ...base,
                                           minWidth: 200,
                                       }),
-                                      menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                                      menu: (provided) => ({
+                                          ...provided,
+                                          zIndex: 9999,
+                                      }),
                                   }}
                                   onChange={async (selectedOption) => {
                                       if (selectedOption?.value) {
                                           try {
+                                              // 1. PUT request
                                               const response = await fetch('http://localhost:5000/api/update-backup-cm', {
                                                   method: 'PUT',
-                                                  headers: { 'Content-Type': 'application/json' },
+                                                  headers: {
+                                                      'Content-Type': 'application/json',
+                                                  },
                                                   body: JSON.stringify({
-                                                      ticketKey: row.ticketKey, // Use the actual ticketKey from the row
-                                                      userId: selectedOption.value, // Use the userId from the selected option
+                                                      ticketKey: row.ticketKey,
+                                                      userId: selectedOption.value,
                                                   }),
                                               });
 
                                               const updateResult = await response.json();
 
                                               if (updateResult?.ticket) {
-                                                  setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket)));
+                                                  console.log('CM updated:', updateResult);
+
+                                                  // 2. Fetch fresh data
+                                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                                                  const refreshedData = await refreshed.json();
+
+                                                  // 3. Find updated ticket
+                                                  const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                                  if (updatedTicket) {
+                                                      setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                                                  }
+                                              } else {
+                                                  console.error('Failed to update CM', updateResult);
                                               }
                                           } catch (error) {
                                               console.error('Error updating CM:', error);
@@ -671,6 +638,7 @@ const Tickets = () => {
                   },
               ]
             : []),
+
         {
             label: 'Name of AM',
             key: 'AM_name',
@@ -693,25 +661,27 @@ const Tickets = () => {
                         classNamePrefix="react-select"
                         styles={{
                             container: (base) => ({ ...base, minWidth: 180 }),
-                            singleValue: (provided) => ({ ...provided, color: '#000' }),
+                            singleValue: (provided) => ({
+                                ...provided,
+                                color: '#000',
+                            }),
                             menu: (provided) => ({ ...provided, zIndex: 9999 }),
                         }}
                         onChange={async (selectedOption) => {
                             if (!selectedOption) return;
 
-                            // Update local state and clear sub-task
+                            // Local patch
                             const newProjects = [...projects];
                             newProjects[rowIndex].taskType = selectedOption.taskType;
                             newProjects[rowIndex].subTaskType = null;
                             newProjects[rowIndex].taskId = selectedOption.taskId;
                             setProjects(newProjects);
 
-                            // Check if there are subtasks for this task
                             const hasSubTasks = taskDropdown.some((item) => item.taskType === selectedOption.taskType && item.subTaskType);
 
                             if (!hasSubTasks) {
-                                // No subtasks → hit API immediately
                                 try {
+                                    // 1. PUT request
                                     const body = {
                                         ticketKey: row.ticketKey,
                                         taskId: selectedOption.taskId,
@@ -720,9 +690,22 @@ const Tickets = () => {
 
                                     await fetch(`http://localhost:5000/api/tasks/update-task`, {
                                         method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
                                         body: JSON.stringify(body),
                                     });
+
+                                    // 2. Fetch refreshed tickets
+                                    const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                                    const refreshedData = await refreshed.json();
+
+                                    // 3. Find updated ticket
+                                    const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                    if (updatedTicket) {
+                                        setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                                    }
                                 } catch (err) {
                                     console.error('⛔ Error updating task type:', err);
                                 }
@@ -738,9 +721,15 @@ const Tickets = () => {
             label: 'Sub Task Type',
             key: 'subTaskType',
             render: (row, rowIndex) => {
-                const options = taskDropdown.filter((item) => item.taskType === row.taskType && item.subTaskType).map((item) => ({ value: item.subTaskType, label: item.subTaskType }));
+                const options = taskDropdown
+                    .filter((item) => item.taskType === row.taskType && item.subTaskType)
+                    .map((item) => ({
+                        value: item.subTaskType,
+                        label: item.subTaskType,
+                    }));
 
                 const uniqueOptions = Array.from(new Map(options.map((opt) => [opt.value, opt])).values());
+
                 const selectedSubTask = row.subTaskType ? uniqueOptions.find((opt) => opt.value === row.subTaskType) || null : null;
 
                 return (
@@ -749,11 +738,14 @@ const Tickets = () => {
                         value={selectedSubTask}
                         placeholder={uniqueOptions.length > 0 ? 'Select Sub Task' : 'No Sub Task'}
                         isClearable
-                        isDisabled={uniqueOptions.length === 0} // disable if no subtasks
+                        isDisabled={uniqueOptions.length === 0}
                         classNamePrefix="react-select"
                         styles={{
                             container: (base) => ({ ...base, minWidth: 180 }),
-                            singleValue: (provided) => ({ ...provided, color: '#000' }),
+                            singleValue: (provided) => ({
+                                ...provided,
+                                color: '#000',
+                            }),
                             menu: (provided) => ({ ...provided, zIndex: 9999 }),
                         }}
                         onChange={async (selectedOption) => {
@@ -761,20 +753,33 @@ const Tickets = () => {
                             newProjects[rowIndex].subTaskType = selectedOption?.value || null;
                             setProjects(newProjects);
 
-                            // Hit API with sub-task
                             try {
+                                // 1. PUT request
                                 const body = {
                                     ticketKey: row.ticketKey,
                                     taskId: row.taskId,
                                     ticketId: row.ticketId,
-                                    // subTaskType: selectedOption?.value || null,
+                                    subTaskType: selectedOption?.value || null,
                                 };
 
                                 await fetch(`http://localhost:5000/api/tasks/update-task`, {
                                     method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
                                     body: JSON.stringify(body),
                                 });
+
+                                // 2. Fetch refreshed tickets
+                                const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                                const refreshedData = await refreshed.json();
+
+                                // 3. Find updated ticket
+                                const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                if (updatedTicket) {
+                                    setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                                }
                             } catch (err) {
                                 console.error('⛔ Error updating sub task type:', err);
                             }
