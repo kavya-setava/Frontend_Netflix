@@ -142,66 +142,6 @@ const Tickets = () => {
         fetchTickets();
     }, [selectedRegions, selectedCM, selectedTicketId, startDate, endDate, page, selectedStatus]); // This hook reacts to all changes, ,assignedCount,totalCount,closedCount removed for correct count as per accuracy
 
-    // const fetchTickets = async () => {
-    //     const cmRegionList = selectedRegions.map((r) => r.value).join(',');
-    //     const cmNameList = selectedCM.map((c) => c.value).join(',');
-    //     const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
-    //     const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
-    //     const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
-
-    //     try {
-    //         const res = await fetch(
-    //             `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
-    //                 selectedStatus || ' '
-    //             }`
-    //         );
-    //         const json = await res.json();
-    //         if (json.success) {
-    //             setProjects(json.data);
-    //             setTotalPages(json.totalPages);
-
-    //             // Set the global metrics ONLY if it's the first page and no other filters are active.
-    //             // const isFirstLoad = page === 1 && !cmRegionList && !cmNameList && !ticketKeyList && !createdFrom && !createdTo;
-    //             // if (isFirstLoad) {
-    //             //     setGlobalMetrics(
-    //             //         json.metrics || {
-    //             //             totalTickets: 0,
-    //             //             assignedTickets: 0,
-    //             //             closedTickets: 0,
-    //             //             startTickets: 0,
-    //             //             interimTickets: 0,
-    //             //             needMoreInfoTickets: 0,
-    //             //             sentToVaoTickets: 0,
-    //             //             solutionProvidedTickets: 0,
-    //             //         }
-    //             //     );
-    //             // }
-
-    //             const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
-    //             setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
-
-    //             const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
-    //             setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
-
-    //             // updating the globalMetric every time when a filter is applied
-    //             setGlobalMetrics(
-    //                 json.metrics || {
-    //                     totalTickets: 0,
-    //                     assignedTickets: 0,
-    //                     closedTickets: 0,
-    //                     startTickets: 0,
-    //                     interimTickets: 0,
-    //                     needMoreInfoTickets: 0,
-    //                     sentToVaoTickets: 0,
-    //                     solutionProvidedTickets: 0,
-    //                 }
-    //             );
-    //         }
-    //     } catch (err) {
-    //         console.error('Error fetching data:', err);
-    //     }
-    // };
-
     const fetchTickets = async () => {
         const cmRegionList = selectedRegions.map((r) => r.value).join(',');
         const cmNameList = selectedCM.map((c) => c.value).join(',');
@@ -242,6 +182,9 @@ const Tickets = () => {
                         solutionProvidedTickets: 0,
                     }
                 );
+            } else {
+                setProjects([]);
+                setTotalPages(1);
             }
         } catch (err) {
             console.error('Error fetching data:', err);
@@ -489,167 +432,6 @@ const Tickets = () => {
             },
         },
 
-        // {
-        //     label: (
-        //         <div>
-        //             End Time <br />
-        //             <small style={{ fontWeight: 'normal' }}>(As per SLA - Reverse Countdown)</small>
-        //         </div>
-        //     ),
-        //     key: 'SLA',
-        //     render: (row) => {
-        //         const timeStr = row?.slaData?.timeRemaining;
-
-        //         // Fallback if SLA missing
-        //         if (!timeStr) {
-        //             return <span style={{ color: 'gray' }}>--:--:--</span>;
-        //         }
-
-        //         // Parse "HH:MM:SS" or "-HH:MM:SS" → total seconds
-        //         const parseToSeconds = (timeStr) => {
-        //             const isNegative = timeStr.startsWith('-');
-        //             const cleanTime = timeStr.replace('-', '');
-        //             const parts = cleanTime.split(':').map(Number);
-
-        //             if (parts.length !== 3) return 0;
-
-        //             const [hh, mm, ss] = parts;
-        //             const total = hh * 3600 + mm * 60 + ss;
-        //             return isNegative ? -total : total;
-        //         };
-
-        //         const totalSeconds = parseToSeconds(timeStr);
-
-        //         // Default green
-        //         let color = 'green';
-
-        //         // Special statuses → always green, show static SLA
-        //         if (row.status === 'Need More Information' || row.status === 'Closed' || row.status === 'Sent to VAO') {
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <strong>{timeStr}</strong>
-        //                 </span>
-        //             );
-        //         }
-
-        //         // SLA coloring rules
-        //         if (totalSeconds < 0) {
-        //             color = 'red'; // overdue
-        //         } else if (totalSeconds <= 1800) {
-        //             color = 'red'; // <= 30 min
-        //         } else if (totalSeconds <= 2700) {
-        //             color = 'orange'; // 45–30 min
-        //         }
-
-        //         return (
-        //             <span style={{ color }}>
-        //                 <CountdownTimer timeRemaining={timeStr} />
-        //             </span>
-        //         );
-        //     },
-        // },
-
-        // {
-        //     label: (
-        //         <div>
-        //             End Time <br />
-        //             <small style={{ fontWeight: 'normal' }}>(As per SLA - Reverse Countdown)</small>
-        //         </div>
-        //     ),
-        //     key: 'SLA',
-        //     render: (row) => {
-        //         //console.log(row.slaData.timeRemaining);
-        //         // const timeStr = row.slaData.timeRemaining || '00:00:00';
-        //         // const [h, m, s] = timeStr.split(':').map(Number);
-        //         // const totalSeconds = h * 3600 + m * 60 + s;
-
-        //         // let color = 'green';
-        //         // if (totalSeconds <= 2700 && totalSeconds > 1800) color = 'orange';
-        //         // if (totalSeconds <= 1800) color = 'red';
-        //         // if(row.status == 'Need More Information' || row.status == 'Closed' || row.status == 'Sent to VAO'){
-        //         //   color = 'green';
-        //         //   return <span style={{ color, fontWeight: 'bold' }}>00:00:00</span>;
-        //         // }else{
-        //         //   //return <span style={{ color, fontWeight: 'bold' }}>{totalSeconds}</span>;
-        //         //   return <span style={{ color, fontWeight: 'bold' }}><CountdownTimer initialSeconds={totalSeconds} /></span>;
-        //         // }
-
-        //         // Convert "HH:MM:SS" or "-HH:MM:SS" to total seconds
-        //         const parseToSeconds = (timeStr) => {
-        //             if (!timeStr) return 0;
-
-        //             const isNegative = timeStr.startsWith('-');
-        //             const cleanTime = timeStr.replace('-', '');
-
-        //             const parts = cleanTime.split(':').map(Number);
-        //             let total = 0;
-        //             if (parts.length === 3) {
-        //                 const [hh, mm, ss] = parts;
-        //                 total = hh * 3600 + mm * 60 + ss;
-        //             }
-        //             return isNegative ? -total : total;
-        //         };
-
-        //         const totalSeconds = parseToSeconds(row.slaData.timeRemaining);
-        //         //const totalSeconds = parseToSeconds(row.SLA);
-
-        //         let color = 'green';
-
-        //         // Special statuses override everything
-        //         if (row.status === 'Need More Information' || row.status === 'Closed' || row.status === 'Sent to VAO') {
-        //             color = 'green';
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <span style={{ fontWeight: 'bold' }}>
-        //                         {row.slaData.timeRemaining}
-        //                         {/*row.SLA*/}
-        //                     </span>
-        //                 </span>
-        //             );
-        //         } else if (totalSeconds == 0) {
-        //             color = 'green'; // overdue
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <strong>{row.slaData.timeRemaining}</strong>
-        //                 </span>
-        //             );
-        //         } else if (totalSeconds < 0) {
-        //             color = 'red'; // overdue
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
-        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
-        //                 </span>
-        //             );
-        //         } else if (totalSeconds <= 1800) {
-        //             color = 'red'; // 30 min or less
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
-        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
-        //                 </span>
-        //             );
-        //         } else if (totalSeconds <= 2700 && totalSeconds > 1800) {
-        //             color = 'orange'; // 45–30 min
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
-        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
-        //                 </span>
-        //             );
-        //         } else {
-        //             color = 'green'; // 45–30 min
-        //             //console.log(row);
-        //             return (
-        //                 <span style={{ color }}>
-        //                     <CountdownTimer timeRemaining={row.slaData.timeRemaining} />
-        //                     {/* <CountdownTimer timeRemaining={row.SLA} /> */}
-        //                 </span>
-        //             );
-        //         }
-        //     },
-        // },
-
         {
             label: (
                 <div>
@@ -728,79 +510,6 @@ const Tickets = () => {
             label: 'End Date',
             key: 'endDateTime',
         },
-
-        //...(Number(user?.role) !== 1 ? [{ label: 'Name of CM', key: 'CM_name' }] : []),
-        // ...(Number(user?.role) !== 1
-        //     ? [
-        //           {
-        //               label: 'Name of CM',
-        //               key: 'CM_name',
-        //               render: (row) =>
-        //                   row.status === 'Closed' ? (
-        //                       // If ticket is Closed dropdoe
-        //                       <span>{row.CM_name || '—'}</span>
-        //                   ) : (
-        //                       <Select
-        //                           options={cmMasterList.map((cm) => ({
-        //                               value: cm.userId,
-        //                               label: cm.name,
-        //                           }))}
-        //                           value={
-        //                               row.CM_name
-        //                                   ? {
-        //                                         label: row.CM_name,
-        //                                         value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
-        //                                     }
-        //                                   : null
-        //                           }
-        //                           isClearable={false}
-        //                           classNamePrefix="react-select"
-        //                           styles={{
-        //                               container: (base) => ({
-        //                                   ...base,
-        //                                   minWidth: 200,
-        //                               }),
-        //                               menu: (provided) => ({ ...provided, zIndex: 9999 }),
-        //                           }}
-        //                           onChange={async (selectedOption) => {
-        //                               if (selectedOption?.value) {
-        //                                   try {
-        //                                       // 1. PUT request with ticketKey + userId
-        //                                       const response = await fetch('http://localhost:5000/api/update-backup-cm', {
-        //                                           method: 'PUT',
-        //                                           headers: {
-        //                                               'Content-Type': 'application/json',
-        //                                           },
-        //                                           body: JSON.stringify({
-        //                                               ticketKey: row.ticketKey,
-        //                                               userId: selectedOption.value,
-        //                                           }),
-        //                                       });
-
-        //                                       const updateResult = await response.json();
-
-        //                                       if (updateResult?.ticket) {
-        //                                           console.log('CM updated:', updateResult);
-
-        //                                           // 2. Fetch fresh data from backend to sync state
-        //                                           const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}`);
-        //                                           const refreshedTicket = await refreshed.json();
-
-        //                                           // 3. Patch the updated row with backend data
-        //                                           setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? refreshedTicket : ticket)));
-        //                                       } else {
-        //                                           console.error('Failed to update CM', updateResult);
-        //                                       }
-        //                                   } catch (error) {
-        //                                       console.error('Error updating CM:', error);
-        //                                   }
-        //                               }
-        //                           }}
-        //                       />
-        //                   ),
-        //           },
-        //       ]
-        //     : []),
 
         ...(Number(user?.role) !== 1
             ? [
@@ -1029,7 +738,7 @@ const Tickets = () => {
                 );
             },
         },
-        
+
         {
             label: 'Region',
             key: 'cm_region',
@@ -1358,12 +1067,14 @@ const Tickets = () => {
                                     cursor: 'pointer',
                                     transition: 'all 0.25s ease-in-out',
                                     transform: isActive ? 'translateY(-3px)' : 'translateY(0px)',
-                                    boxShadow: isActive ? '0px 8px 15px rgba(0,0,0,0.3)' : '0px 2px 5px rgba(0,0,0,0)',
+                                    boxShadow: isActive ? '0px 8px 15px rgba(0,0,0,0.6)' : '0px 2px 5px rgba(0,0,0,0)',
+                                    textDecoration: isActive ? 'underline' : 'none',
+                                    fontStyle: isActive ? 'italic' : 'normal',
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
                                         e.currentTarget.style.transform = 'translateY(-3px)';
-                                        e.currentTarget.style.boxShadow = '0px 8px 15px rgba(0,0,0,0.3)';
+                                        e.currentTarget.style.boxShadow = '0px 8px 15px rgba(0,0,0,0.6)';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
