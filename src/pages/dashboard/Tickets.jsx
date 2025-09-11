@@ -58,9 +58,6 @@ const Tickets = () => {
         }
     }, []);
 
-
-    
-
     //Fetching all the CM's
     useEffect(() => {
         const fetchCMs = async () => {
@@ -205,53 +202,79 @@ const Tickets = () => {
     //     }
     // };
 
-const fetchTickets = async () => {
-  const cmRegionList = selectedRegions.map((r) => r.value).join(',');
-  const cmNameList = selectedCM.map((c) => c.value).join(',');
-  const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
-  const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
-  const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
+    const fetchTickets = async () => {
+        const cmRegionList = selectedRegions.map((r) => r.value).join(',');
+        const cmNameList = selectedCM.map((c) => c.value).join(',');
+        const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
+        const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
+        const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
 
-  try {
-    const res = await fetch(
-      `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
-        selectedStatus || ' '
-      }`
-    );
-    const json = await res.json();
+        try {
+            const res = await fetch(
+                `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
+                    selectedStatus || ' '
+                }`
+            );
+            const json = await res.json();
 
-    if (json.success) {
-      setProjects(json.data);
-      setTotalPages(json.totalPages);
+            if (json.success) {
+                setProjects(json.data);
+                setTotalPages(json.totalPages);
 
-      // ✅ Only update cmOptions when NO CM filter is applied
-      if (!cmNameList) {
-        const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
-        setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
-      }
+                // ✅ Only update cmOptions when NO CM filter is applied
+                // if (!cmNameList) {
+                //     const uniqueCMs = Array.from(new Set(json.data.map((d) => d.CM_name)));
+                //     setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+                // }
 
-    //   const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
-    //   setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+                //   const uniqueTickets = Array.from(new Set(json.data.map((d) => d.ticketKey)));
+                //   setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
 
-      setGlobalMetrics(
-        json.metrics || {
-          totalTickets: 0,
-          assignedTickets: 0,
-          closedTickets: 0,
-          startTickets: 0,
-          interimTickets: 0,
-          needMoreInfoTickets: 0,
-          sentToVaoTickets: 0,
-          solutionProvidedTickets: 0,
+                setGlobalMetrics(
+                    json.metrics || {
+                        totalTickets: 0,
+                        assignedTickets: 0,
+                        closedTickets: 0,
+                        startTickets: 0,
+                        interimTickets: 0,
+                        needMoreInfoTickets: 0,
+                        sentToVaoTickets: 0,
+                        solutionProvidedTickets: 0,
+                    }
+                );
+            }
+        } catch (err) {
+            console.error('Error fetching data:', err);
         }
-      );
-    }
-  } catch (err) {
-    console.error('Error fetching data:', err);
-  }
-};
+    };
 
+    useEffect(() => {
+        if (!allTicketsData.length) return;
 
+        let filtered = allTicketsData;
+
+        if (selectedRegions.length) {
+            const regionSet = new Set(selectedRegions.map((r) => r.value));
+            filtered = filtered.filter((t) => regionSet.has(t.cm_region));
+        }
+
+        if (selectedCM.length) {
+            const cmSet = new Set(selectedCM.map((c) => c.value));
+            filtered = filtered.filter((t) => cmSet.has(t.CM_name));
+        }
+
+        if (selectedTicketId.length) {
+            const ticketSet = new Set(selectedTicketId.map((t) => t.value));
+            filtered = filtered.filter((t) => ticketSet.has(t.ticketKey));
+        }
+
+        // 🔑 Always rebuild options from filtered tickets
+        const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
+        setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+
+        const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
+        setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+    }, [allTicketsData, selectedRegions, selectedCM ]);
 
     const fetchAllTicketsForDropdowns = async () => {
         try {
@@ -548,107 +571,102 @@ const fetchTickets = async () => {
                               // If ticket is Closed dropdoe
                               <span>{row.CM_name || '—'}</span>
                           ) : (
-//                              <Select
-//   options={cmMasterList.map((cm) => ({
-//     value: cm.name,
-//     label: cm.name,
-//   }))}
-//   value={
-//     row.CM_name
-//       ? cmMasterList.find((cm) => cm.name === row.CM_name) 
-//           ? { value: row.CM_name, label: row.CM_name }
-//           : null
-//       : null
-//   }
-//   isClearable={false}
-//   classNamePrefix="react-select"
-//   styles={{
-//     container: (base) => ({
-//       ...base,
-//       minWidth: 200,
-//     }),
-//     menu: (provided) => ({ ...provided, zIndex: 9999 }),
-//   }}
-//   onChange={async (selectedOption) => {
-//     console.log(row.ticketKey,selectedOption)
-//     if (selectedOption?.value) {
-//       try {
-//         const response = await fetch('http://localhost:5000/api/update-backup-cm', {
-//           method: 'PUT',
-//           headers: { 'Content-Type': 'application/json' },
-//           body: JSON.stringify({
-//             // ticketKey: row.ticketKey,
-//             // userId: selectedOption.value,
-//             "ticketKey":"AC-72465",
-//     "userId":"User-000087"
-//           }),
-//         });
+                              //                              <Select
+                              //   options={cmMasterList.map((cm) => ({
+                              //     value: cm.name,
+                              //     label: cm.name,
+                              //   }))}
+                              //   value={
+                              //     row.CM_name
+                              //       ? cmMasterList.find((cm) => cm.name === row.CM_name)
+                              //           ? { value: row.CM_name, label: row.CM_name }
+                              //           : null
+                              //       : null
+                              //   }
+                              //   isClearable={false}
+                              //   classNamePrefix="react-select"
+                              //   styles={{
+                              //     container: (base) => ({
+                              //       ...base,
+                              //       minWidth: 200,
+                              //     }),
+                              //     menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                              //   }}
+                              //   onChange={async (selectedOption) => {
+                              //     console.log(row.ticketKey,selectedOption)
+                              //     if (selectedOption?.value) {
+                              //       try {
+                              //         const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+                              //           method: 'PUT',
+                              //           headers: { 'Content-Type': 'application/json' },
+                              //           body: JSON.stringify({
+                              //             // ticketKey: row.ticketKey,
+                              //             // userId: selectedOption.value,
+                              //             "ticketKey":"AC-72465",
+                              //     "userId":"User-000087"
+                              //           }),
+                              //         });
 
-//         const updateResult = await response.json();
+                              //         const updateResult = await response.json();
 
-//         if (updateResult?.ticket) {
-//           setProjects((prev) =>
-//             prev.map((ticket) =>
-//               ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket
-//             )
-//           );
-//         }
-//       } catch (error) {
-//         console.error('Error updating CM:', error);
-//       }
-//     }
-//   }}
-// />
+                              //         if (updateResult?.ticket) {
+                              //           setProjects((prev) =>
+                              //             prev.map((ticket) =>
+                              //               ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket
+                              //             )
+                              //           );
+                              //         }
+                              //       } catch (error) {
+                              //         console.error('Error updating CM:', error);
+                              //       }
+                              //     }
+                              //   }}
+                              // />
 
-<Select
-  options={cmMasterList.map((cm) => ({
-    value: cm.userId, // Use userId as value
-    label: cm.name,   // Show name as label
-  }))}
-  value={
-    row.CM_name
-      ? cmMasterList.find((cm) => cm.name === row.CM_name) 
-          ? { value: row.userId, label: row.CM_name } // Use userId for value
-          : null
-      : null
-  }
-  isClearable={false}
-  classNamePrefix="react-select"
-  styles={{
-    container: (base) => ({
-      ...base,
-      minWidth: 200,
-    }),
-    menu: (provided) => ({ ...provided, zIndex: 9999 }),
-  }}
-  onChange={async (selectedOption) => {
-    if (selectedOption?.value) {
-      try {
-        const response = await fetch('http://localhost:5000/api/update-backup-cm', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ticketKey: row.ticketKey, // Use the actual ticketKey from the row
-            userId: selectedOption.value, // Use the userId from the selected option
-          }),
-        });
+                              <Select
+                                  options={cmMasterList.map((cm) => ({
+                                      value: cm.userId, // Use userId as value
+                                      label: cm.name, // Show name as label
+                                  }))}
+                                  value={
+                                      row.CM_name
+                                          ? cmMasterList.find((cm) => cm.name === row.CM_name)
+                                              ? { value: row.userId, label: row.CM_name } // Use userId for value
+                                              : null
+                                          : null
+                                  }
+                                  isClearable={false}
+                                  classNamePrefix="react-select"
+                                  styles={{
+                                      container: (base) => ({
+                                          ...base,
+                                          minWidth: 200,
+                                      }),
+                                      menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                                  }}
+                                  onChange={async (selectedOption) => {
+                                      if (selectedOption?.value) {
+                                          try {
+                                              const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+                                                  method: 'PUT',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({
+                                                      ticketKey: row.ticketKey, // Use the actual ticketKey from the row
+                                                      userId: selectedOption.value, // Use the userId from the selected option
+                                                  }),
+                                              });
 
-        const updateResult = await response.json();
+                                              const updateResult = await response.json();
 
-        if (updateResult?.ticket) {
-          setProjects((prev) =>
-            prev.map((ticket) =>
-              ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket
-            )
-          );
-        }
-      } catch (error) {
-        console.error('Error updating CM:', error);
-      }
-    }
-  }}
-/>
-
+                                              if (updateResult?.ticket) {
+                                                  setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updateResult.ticket : ticket)));
+                                              }
+                                          } catch (error) {
+                                              console.error('Error updating CM:', error);
+                                          }
+                                      }
+                                  }}
+                              />
                           ),
                   },
               ]
