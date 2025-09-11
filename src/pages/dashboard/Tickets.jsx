@@ -911,7 +911,8 @@ const Tickets = () => {
         setEndDate(null);
         setPage(1); // Optional: Reset to first page
         setPaginationGroup(0);
-        fetchTickets();
+        setSelectedStatus('');
+        // fetchTickets();
         // Optional: Reset to first pagination group
     };
     const downloadCSV = async () => {
