@@ -242,6 +242,9 @@ const Tickets = () => {
                         solutionProvidedTickets: 0,
                     }
                 );
+            } else {
+                setProjects([]);
+                setTotalPages(1);
             }
         } catch (err) {
             console.error('Error fetching data:', err);
@@ -1117,12 +1120,14 @@ const Tickets = () => {
                                     cursor: 'pointer',
                                     transition: 'all 0.25s ease-in-out',
                                     transform: isActive ? 'translateY(-3px)' : 'translateY(0px)',
-                                    boxShadow: isActive ? '0px 8px 15px rgba(0,0,0,0.3)' : '0px 2px 5px rgba(0,0,0,0)',
+                                    boxShadow: isActive ? '0px 8px 15px rgba(0,0,0,0.6)' : '0px 2px 5px rgba(0,0,0,0)',
+                                    textDecoration: isActive ? 'underline' : 'none',
+                                    fontStyle: isActive ? 'italic' : 'normal',
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
                                         e.currentTarget.style.transform = 'translateY(-3px)';
-                                        e.currentTarget.style.boxShadow = '0px 8px 15px rgba(0,0,0,0.3)';
+                                        e.currentTarget.style.boxShadow = '0px 8px 15px rgba(0,0,0,0.6)';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
