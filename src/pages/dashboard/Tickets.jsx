@@ -211,13 +211,17 @@ const Tickets = () => {
             filtered = filtered.filter((t) => ticketSet.has(t.ticketKey));
         }
 
+        if (selectedStatus) {
+            filtered = filtered.filter((t) => t.status === selectedStatus);
+          }
+
         // 🔑 Always rebuild options from filtered tickets
         const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
         setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
 
         const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
         setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
-    }, [allTicketsData, selectedRegions, selectedCM]);
+    }, [allTicketsData, selectedRegions, selectedCM, selectedStatus]);
 
     const fetchAllTicketsForDropdowns = async () => {
         try {
@@ -587,7 +591,13 @@ const Tickets = () => {
                           ),
                   },
               ]
-            : []),
+            : [
+                  {
+                      label: 'Name of CM',
+                      key: 'CM_name',
+                      render: (row) => <span>{row.CM_name || '—'}</span>,
+                  },
+              ]),
 
         {
             label: 'Name of AM',
