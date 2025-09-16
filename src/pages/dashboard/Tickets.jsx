@@ -213,7 +213,7 @@ const Tickets = () => {
 
         if (selectedStatus) {
             filtered = filtered.filter((t) => t.status === selectedStatus);
-          }
+        }
 
         // 🔑 Always rebuild options from filtered tickets
         const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
@@ -293,17 +293,17 @@ const Tickets = () => {
         fetchDropdownData();
     }, []);
 
-    useEffect(() => {
-        const filteredByRegion = selectedRegions.length > 0 ? allTicketsData.filter((t) => selectedRegions.map((r) => r.value).includes(t.cm_region)) : allTicketsData;
+    // useEffect(() => {
+    //     const filteredByRegion = selectedRegions.length > 0 ? allTicketsData.filter((t) => selectedRegions.map((r) => r.value).includes(t.cm_region)) : allTicketsData;
 
-        const uniqueCms = Array.from(new Set(filteredByRegion.map((t) => t.CM_name))).filter(Boolean);
-        setCmOptions(uniqueCms.map((name) => ({ value: name, label: name })));
+    //     const uniqueCms = Array.from(new Set(filteredByRegion.map((t) => t.CM_name))).filter(Boolean);
+    //     setCmOptions(uniqueCms.map((name) => ({ value: name, label: name })));
 
-        const filteredByCm = selectedCM.length > 0 ? filteredByRegion.filter((t) => selectedCM.map((c) => c.value).includes(t.CM_name)) : filteredByRegion;
+    //     const filteredByCm = selectedCM.length > 0 ? filteredByRegion.filter((t) => selectedCM.map((c) => c.value).includes(t.CM_name)) : filteredByRegion;
 
-        const uniqueTickets = Array.from(new Set(filteredByCm.map((t) => t.ticketKey))).filter(Boolean);
-        setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
-    }, [selectedRegions, selectedCM, allTicketsData]);
+    //     const uniqueTickets = Array.from(new Set(filteredByCm.map((t) => t.ticketKey))).filter(Boolean);
+    //     setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
+    // }, [selectedRegions, selectedCM, allTicketsData]);
 
     useEffect(() => {
         async function loadTaskDropdown() {
@@ -398,6 +398,9 @@ const Tickets = () => {
                         style={{
                             fontSize: '0.9rem',
                             textDecoration: 'underline',
+                            whiteSpace: 'nowrap',
+                            width: 'auto',
+                            display: 'inline-block',
                         }}
                     >
                         {row.ticketKey}
@@ -406,11 +409,19 @@ const Tickets = () => {
             },
         },
         {
-            label: 'Created Date & Time',
+            label: (
+                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+                    Created <br /> Date & Time
+                </span>
+            ),
             key: 'created',
         },
         {
-            label: 'Last Updated Date & Time',
+            label: (
+                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+                    Last Updated <br /> Date & Time
+                </span>
+            ),
             key: 'updated',
             render: (row) => {
                 if (!row.updated) return '-';
@@ -438,9 +449,9 @@ const Tickets = () => {
 
         {
             label: (
-                <div>
+                <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
                     End Time <br />
-                    <small style={{ fontWeight: 'normal' }}>(As per SLA - Reverse Countdown)</small>
+                    <small style={{ fontWeight: 'normal' }}>(As per SLA -<br/> Reverse Countdown)</small>
                 </div>
             ),
             key: 'SLA',
@@ -600,7 +611,11 @@ const Tickets = () => {
               ]),
 
         {
-            label: 'Name of AM',
+            label: (
+                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+                  Name of AM
+                </span>
+            ),
             key: 'AM_name',
         },
 
@@ -617,7 +632,6 @@ const Tickets = () => {
                         getOptionValue={(opt) => opt.taskId}
                         value={selectedTask}
                         placeholder="Select Task Type"
-                        isClearable
                         classNamePrefix="react-select"
                         styles={{
                             container: (base) => ({ ...base, minWidth: 180 }),
@@ -697,7 +711,6 @@ const Tickets = () => {
                         options={uniqueOptions}
                         value={selectedSubTask}
                         placeholder={uniqueOptions.length > 0 ? 'Select Sub Task' : 'No Sub Task'}
-                        isClearable
                         isDisabled={uniqueOptions.length === 0}
                         classNamePrefix="react-select"
                         styles={{
@@ -842,7 +855,11 @@ const Tickets = () => {
         },
 
         {
-            label: 'Last Comment Added',
+            label: (
+                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+                  Last Comment<br/> Added
+                </span>
+            ),
             key: 'lastComment',
             render: (row) => (
                 <button
@@ -1118,7 +1135,7 @@ const Tickets = () => {
                                 <Select isClearable isMulti options={ticketIdOptions} placeholder="Select Ticket ID" value={selectedTicketId} onChange={handleTicketIdChange} />
                             </div>
 
-                            <div className="form-group pe-3 flex">
+                            <div className="form-group pe-3 flex" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                 <label htmlFor="fromDate" className="mb-1">
                                     <strong>From Date : </strong>
                                 </label>
@@ -1132,7 +1149,7 @@ const Tickets = () => {
                                 />
                             </div>
 
-                            <div className="form-group pe-3 flex">
+                            <div className="form-group pe-3 flex" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                 <label htmlFor="toDate" className="mb-1">
                                     <strong>To Date : </strong>
                                 </label>
