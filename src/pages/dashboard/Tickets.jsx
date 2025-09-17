@@ -876,28 +876,28 @@ const Tickets = () => {
             },
         },
 
-        {
-            label: (
-                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
-                    Last Comment
-                    <br /> Added
-                </span>
-            ),
-            key: 'lastComment',
-            render: (row) => (
-                <button
-                    onClick={() => handleOpenModal(row)}
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                    }}
-                    title="View details"
-                >
-                    ℹ️
-                </button>
-            ),
-        },
+        // {
+        //     label: (
+        //         <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+        //             Last Comment
+        //             <br /> Added
+        //         </span>
+        //     ),
+        //     key: 'lastComment',
+        //     render: (row) => (
+        //         <button
+        //             onClick={() => handleOpenModal(row)}
+        //             style={{
+        //                 background: 'transparent',
+        //                 border: 'none',
+        //                 cursor: 'pointer',
+        //             }}
+        //             title="View details"
+        //         >
+        //             ℹ️
+        //         </button>
+        //     ),
+        // },
     ];
 
     const resetFilters = () => {
