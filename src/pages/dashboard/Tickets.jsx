@@ -451,7 +451,9 @@ const Tickets = () => {
             label: (
                 <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
                     End Time <br />
-                    <small style={{ fontWeight: 'normal' }}>(As per SLA -<br/> Reverse Countdown)</small>
+                    <small style={{ fontWeight: 'normal' }}>
+                        (As per SLA -<br /> Reverse Countdown)
+                    </small>
                 </div>
             ),
             key: 'SLA',
@@ -563,8 +565,8 @@ const Tickets = () => {
                                   onChange={async (selectedOption) => {
                                       if (selectedOption?.value) {
                                           try {
-                                              // 1. PUT request
-                                              const response = await fetch('http://localhost:5000/api/update-backup-cm', {
+                                              // 1. Update CM in Database
+                                              const dbResponse = await fetch('http://localhost:5000/api/updateBackupCM_DB', {
                                                   method: 'PUT',
                                                   headers: {
                                                       'Content-Type': 'application/json',
@@ -575,24 +577,35 @@ const Tickets = () => {
                                                   }),
                                               });
 
-                                              const updateResult = await response.json();
+                                              const dbResult = await dbResponse.json();
 
-                                              if (updateResult?.ticket) {
-                                                  console.log('CM updated:', updateResult);
+                                              console.log('DB update result:', dbResult);
 
-                                                  // 2. Fetch fresh data
-                                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
-                                                  const refreshedData = await refreshed.json();
+                                              // 2. Fetch fresh ticket data
+                                              const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                                              const refreshedData = await refreshed.json();
 
-                                                  // 3. Find updated ticket
-                                                  const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+                                              const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
 
-                                                  if (updatedTicket) {
-                                                      setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
-                                                  }
-                                              } else {
-                                                  console.error('Failed to update CM', updateResult);
+                                              if (updatedTicket) {
+                                                  setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
                                               }
+
+                                              // 3. Update CM in Google Sheet
+                                              const sheetResponse = await fetch('http://localhost:5000/api/updateBackupCM_Sheet', {
+                                                  method: 'PUT',
+                                                  headers: {
+                                                      'Content-Type': 'application/json',
+                                                  },
+                                                  body: JSON.stringify({
+                                                      ticketKey: row.ticketKey,
+                                                      userId: selectedOption.value,
+                                                  }),
+                                              });
+
+                                              const sheetResult = await sheetResponse.json();
+
+                                              console.log('Sheet update result:', sheetResult);
                                           } catch (error) {
                                               console.error('Error updating CM:', error);
                                           }
@@ -611,11 +624,7 @@ const Tickets = () => {
               ]),
 
         {
-            label: (
-                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
-                  Name of AM
-                </span>
-            ),
+            label: <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>Name of AM</span>,
             key: 'AM_name',
         },
 
@@ -795,8 +804,8 @@ const Tickets = () => {
                         onChange={async (selectedOption) => {
                             if (selectedOption?.value) {
                                 try {
-                                    // 1. Update status in backend
-                                    const response = await fetch(`http://localhost:5000/api/updateTicketByKey/${row.ticketKey}`, {
+                                    // 1. Update status in backend DB
+                                    const response = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
                                         method: 'PUT',
                                         headers: {
                                             'Content-Type': 'application/json',
@@ -844,6 +853,19 @@ const Tickets = () => {
                                     } else {
                                         console.error('Status update failed', updateResult.error);
                                     }
+
+                                    //3.If the status is updated correctly in the DB, update in the sheet as well
+                                    if (updateResult.success) {
+                                        const sheetUpdate = await fetch(`http://localhost:5000/api/updateTicketByKey_Sheet/${row.ticketKey}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({ status: selectedOption.value }),
+                                        });
+                                    } else {
+                                        console.error('Status update failed', updateResult.error);
+                                    }
                                 } catch (error) {
                                     console.error('Error during status update or fetching tickets:', error);
                                 }
@@ -854,27 +876,28 @@ const Tickets = () => {
             },
         },
 
-        {
-            label: (
-                <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
-                  Last Comment<br/> Added
-                </span>
-            ),
-            key: 'lastComment',
-            render: (row) => (
-                <button
-                    onClick={() => handleOpenModal(row)}
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                    }}
-                    title="View details"
-                >
-                    ℹ️
-                </button>
-            ),
-        },
+        // {
+        //     label: (
+        //         <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+        //             Last Comment
+        //             <br /> Added
+        //         </span>
+        //     ),
+        //     key: 'lastComment',
+        //     render: (row) => (
+        //         <button
+        //             onClick={() => handleOpenModal(row)}
+        //             style={{
+        //                 background: 'transparent',
+        //                 border: 'none',
+        //                 cursor: 'pointer',
+        //             }}
+        //             title="View details"
+        //         >
+        //             ℹ️
+        //         </button>
+        //     ),
+        // },
     ];
 
     const resetFilters = () => {
