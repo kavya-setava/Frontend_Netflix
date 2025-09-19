@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import ReusableTable from '../../components/table/ReusableTable';
 import ReusableModal from '../../components/Popup/ReusableModal';
 import Select from 'react-select';
@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import '../../style/Style.css';
 import { Card } from 'react-bootstrap';
 import { Download } from 'lucide-react';
+
 
 const Tickets = () => {
     const [role, setRole] = useState(null);
@@ -29,6 +30,8 @@ const Tickets = () => {
     const [cmMasterList, setCmMasterList] = useState([]);
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
 
+
+    
     const [globalMetrics, setGlobalMetrics] = useState({
         totalTickets: 0,
         assignedTickets: 0,
@@ -239,6 +242,8 @@ const Tickets = () => {
     }, []);
 
     const [timers, setTimers] = useState({});
+    // Action buttons use ref intervel code 
+    const intervals = useRef({});
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -371,6 +376,68 @@ const Tickets = () => {
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
     }
 
+// action code start 
+const getRowKey = (row) => row.ticketKey; // use ticketKey as unique key
+// Start
+const handleStart = (row) => {
+  const rowKey = getRowKey(row);
+
+  setTimers((prev) => {
+    const existing = prev[rowKey] || { seconds: 0, status: "idle" };
+
+    if (existing.status === "running") return prev;
+
+    clearInterval(intervals.current[rowKey]);
+
+    intervals.current[rowKey] = setInterval(() => {
+      setTimers((prevTimers) => {
+        const t = prevTimers[rowKey] || { seconds: 0, status: "idle" };
+        if (t.status !== "running") return prevTimers;
+        return {
+          ...prevTimers,
+          [rowKey]: { ...t, seconds: t.seconds + 1 },
+        };
+      });
+    }, 1000);
+
+    return {
+      ...prev,
+      [rowKey]: { ...existing, status: "running" },
+    };
+  });
+};
+
+// Pause
+const handlePause = (row) => {
+  const rowKey = getRowKey(row);
+  clearInterval(intervals.current[rowKey]);
+  setTimers((prev) => {
+    const existing = prev[rowKey] || { seconds: 0, status: "idle" };
+    return {
+      ...prev,
+      [rowKey]: { ...existing, status: "paused" },
+    };
+  });
+};
+
+// Complete
+const handleComplete = (row) => {
+  const rowKey = getRowKey(row);
+  clearInterval(intervals.current[rowKey]);
+  delete intervals.current[rowKey];
+  setTimers((prev) => {
+    const existing = prev[rowKey] || { seconds: 0, status: "idle" };
+    return {
+      ...prev,
+      [rowKey]: { ...existing, status: "completed", finalTime: existing.seconds },
+    };
+  });
+};
+
+// Save timers to localStorage whenever they update
+
+// action code end 
+
     const columns = [
         // {
         //     label: 'S. No',
@@ -381,9 +448,12 @@ const Tickets = () => {
             label: 'Ticket ID',
             key: 'ticketKey',
             render: (row) => {
-                const timeStr = timers[row.id] || '00:00:00';
-                const [h, m, s] = timeStr.split(':').map(Number);
-                const totalSeconds = h * 3600 + m * 60 + s;
+                // const timeStr = timers[row.id] || '00:00:00';
+                // const [h, m, s] = timeStr.split(':').map(Number);
+                // const totalSeconds = h * 3600 + m * 60 + s;
+                const timer = timers[row.id] || { seconds: 0, status: "idle" };
+                const totalSeconds = timer.seconds;
+
 
                 let badgeClass = 'bg-success';
                 if (totalSeconds <= 1800 && totalSeconds > 600) badgeClass = 'bg-warning text-dark';
@@ -875,6 +945,105 @@ const Tickets = () => {
                 );
             },
         },
+
+{
+  label: (
+    <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+      Time <br />
+      <small style={{ fontWeight: 'normal' }}>
+        (Start / Pause / Complete)
+      </small>
+    </div>
+  ),
+  key: 'cm_time',
+  render: (row) => {
+    const rowKey = getRowKey(row);
+    const timer = timers[rowKey] || { seconds: 0, status: 'idle' };
+
+    const formatTime = (totalSeconds) => {
+      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSeconds % 60).padStart(2, '0');
+      return `${hrs}:${mins}:${secs}`;
+    };
+
+    let color = 'black';
+    if (timer.status === 'running') color = 'red';
+    else if (timer.status === 'paused') color = 'orange';
+    else if (timer.status === 'completed') color = 'green';
+
+    const displayTime =
+      timer.status === 'completed'
+        ? formatTime(timer.finalTime ?? timer.seconds)
+        : formatTime(timer.seconds);
+
+    return (
+      <span style={{ color }}>
+        <strong>{displayTime}</strong>
+      </span>
+    );
+  },
+},
+{
+  label: "Actions",
+  key: "actions",
+  render: (row) => {
+    const rowKey = getRowKey(row);
+    const timer = timers[rowKey] || { seconds: 0, status: "idle" };
+
+    if (timer.status === "completed") {
+      return <span style={{ color: "green" }}>✅ Finalized</span>;
+    }
+
+    return (
+      <div style={{ whiteSpace: "nowrap" }}>
+        <button
+          onClick={() => handleStart(row)}
+          disabled={timer.status === "running"}
+          style={{
+            background: "transparent",
+            border: "1px solid #007bff",
+            borderRadius: "4px",
+            padding: "4px 8px",
+            cursor: timer.status === "running" ? "not-allowed" : "pointer",
+            marginRight: "8px",
+          }}
+        >
+          ▶️ Start
+        </button>
+
+        <button
+          onClick={() => handlePause(row)}
+          disabled={timer.status !== "running"}
+          style={{
+            background: "transparent",
+            border: "1px solid #ffc107",
+            borderRadius: "4px",
+            padding: "4px 8px",
+            cursor: timer.status !== "running" ? "not-allowed" : "pointer",
+            marginRight: "8px",
+          }}
+        >
+          ⏸️ Pause
+        </button>
+
+        <button
+          onClick={() => handleComplete(row)}
+          style={{
+            background: "transparent",
+            border: "1px solid #28a745",
+            borderRadius: "4px",
+            padding: "4px 8px",
+            cursor: "pointer",
+          }}
+        >
+          ✅ Complete
+        </button>
+      </div>
+    );
+  },
+},
+
 
         // {
         //     label: (
