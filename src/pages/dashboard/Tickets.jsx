@@ -1,4 +1,4 @@
-import React, { useState, useEffect,useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReusableTable from '../../components/table/ReusableTable';
 import ReusableModal from '../../components/Popup/ReusableModal';
 import Select from 'react-select';
@@ -31,7 +31,7 @@ const Tickets = () => {
     const [ticketIdOptions, setTicketIdOptions] = useState([]);
 
 
-    
+
     const [globalMetrics, setGlobalMetrics] = useState({
         totalTickets: 0,
         assignedTickets: 0,
@@ -154,8 +154,7 @@ const Tickets = () => {
 
         try {
             const res = await fetch(
-                `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${
-                    selectedStatus || ' '
+                `http://localhost:5000/api/getNetflixTickets?email=${email}&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}&status=${selectedStatus || ' '
                 }`
             );
             const json = await res.json();
@@ -376,67 +375,77 @@ const Tickets = () => {
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
     }
 
-// action code start 
-const getRowKey = (row) => row.ticketKey; // use ticketKey as unique key
-// Start
-const handleStart = (row) => {
-  const rowKey = getRowKey(row);
+    // action code start 
+    const getRowKey = (row) => row.ticketKey; // use ticketKey as unique key
 
-  setTimers((prev) => {
-    const existing = prev[rowKey] || { seconds: 0, status: "idle" };
+    // Start
+    const handleStart = (row) => {
+        const rowKey = getRowKey(row);
+        setTimers((prev) => {
+            const existing = prev[rowKey] || { seconds: 0, status: "idle" };
 
-    if (existing.status === "running") return prev;
+            // only allow start if idle or paused
+            if (existing.status === "running") return prev;
 
-    clearInterval(intervals.current[rowKey]);
+            clearInterval(intervals.current[rowKey]);
+            intervals.current[rowKey] = setInterval(() => {
+                setTimers((prevTimers) => {
+                    const t = prevTimers[rowKey] || { seconds: 0, status: "idle" };
+                    if (t.status !== "running") return prevTimers;
+                    return { ...prevTimers, [rowKey]: { ...t, seconds: t.seconds + 1 } };
+                });
+            }, 1000);
 
-    intervals.current[rowKey] = setInterval(() => {
-      setTimers((prevTimers) => {
-        const t = prevTimers[rowKey] || { seconds: 0, status: "idle" };
-        if (t.status !== "running") return prevTimers;
-        return {
-          ...prevTimers,
-          [rowKey]: { ...t, seconds: t.seconds + 1 },
-        };
-      });
-    }, 1000);
-
-    return {
-      ...prev,
-      [rowKey]: { ...existing, status: "running" },
+            return {
+                ...prev,
+                [rowKey]: { ...existing, status: "running" }, // resume if paused
+            };
+        });
     };
-  });
-};
 
-// Pause
-const handlePause = (row) => {
-  const rowKey = getRowKey(row);
-  clearInterval(intervals.current[rowKey]);
-  setTimers((prev) => {
-    const existing = prev[rowKey] || { seconds: 0, status: "idle" };
-    return {
-      ...prev,
-      [rowKey]: { ...existing, status: "paused" },
+
+    // Pause (only once, after start)
+    const handlePause = (row) => {
+        const rowKey = getRowKey(row);
+        clearInterval(intervals.current[rowKey]);
+
+        setTimers((prev) => {
+            const existing = prev[rowKey] || { seconds: 0, status: "idle" };
+
+            // allow pause only if running
+            if (existing.status !== "running") return prev;
+
+            return {
+                ...prev,
+                [rowKey]: { ...existing, status: "paused" },
+            };
+        });
     };
-  });
-};
 
-// Complete
-const handleComplete = (row) => {
-  const rowKey = getRowKey(row);
-  clearInterval(intervals.current[rowKey]);
-  delete intervals.current[rowKey];
-  setTimers((prev) => {
-    const existing = prev[rowKey] || { seconds: 0, status: "idle" };
-    return {
-      ...prev,
-      [rowKey]: { ...existing, status: "completed", finalTime: existing.seconds },
+    // Complete (only once, after start/pause)
+    const handleComplete = (row) => {
+        const rowKey = getRowKey(row);
+        clearInterval(intervals.current[rowKey]);
+        delete intervals.current[rowKey];
+
+        setTimers((prev) => {
+            const existing = prev[rowKey] || { seconds: 0, status: "idle" };
+
+            // allow complete only if running or paused
+            if (existing.status !== "running" && existing.status !== "paused") return prev;
+
+            return {
+                ...prev,
+                [rowKey]: {
+                    ...existing,
+                    status: "completed",
+                    finalTime: existing.seconds,
+                },
+            };
+        });
     };
-  });
-};
 
-// Save timers to localStorage whenever they update
-
-// action code end 
+    // action code end 
 
     const columns = [
         // {
@@ -600,98 +609,98 @@ const handleComplete = (row) => {
 
         ...(Number(user?.role) !== 1
             ? [
-                  {
-                      label: 'Name of CM',
-                      key: 'CM_name',
-                      render: (row) =>
-                          row.status === 'Closed' ? (
-                              <span>{row.CM_name || '—'}</span>
-                          ) : (
-                              <Select
-                                  options={cmMasterList.map((cm) => ({
-                                      value: cm.userId,
-                                      label: cm.name,
-                                  }))}
-                                  value={
-                                      row.CM_name
-                                          ? {
-                                                label: row.CM_name,
-                                                value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+                {
+                    label: 'Name of CM',
+                    key: 'CM_name',
+                    render: (row) =>
+                        row.status === 'Closed' ? (
+                            <span>{row.CM_name || '—'}</span>
+                        ) : (
+                            <Select
+                                options={cmMasterList.map((cm) => ({
+                                    value: cm.userId,
+                                    label: cm.name,
+                                }))}
+                                value={
+                                    row.CM_name
+                                        ? {
+                                            label: row.CM_name,
+                                            value: cmMasterList.find((cm) => cm.name === row.CM_name)?.userId || row.CM_name,
+                                        }
+                                        : null
+                                }
+                                isClearable={false}
+                                classNamePrefix="react-select"
+                                styles={{
+                                    container: (base) => ({
+                                        ...base,
+                                        minWidth: 200,
+                                    }),
+                                    menu: (provided) => ({
+                                        ...provided,
+                                        zIndex: 9999,
+                                    }),
+                                }}
+                                onChange={async (selectedOption) => {
+                                    if (selectedOption?.value) {
+                                        try {
+                                            // 1. Update CM in Database
+                                            const dbResponse = await fetch('http://localhost:5000/api/updateBackupCM_DB', {
+                                                method: 'PUT',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                },
+                                                body: JSON.stringify({
+                                                    ticketKey: row.ticketKey,
+                                                    userId: selectedOption.value,
+                                                }),
+                                            });
+
+                                            const dbResult = await dbResponse.json();
+
+                                            console.log('DB update result:', dbResult);
+
+                                            // 2. Fetch fresh ticket data
+                                            const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                                            const refreshedData = await refreshed.json();
+
+                                            const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                            if (updatedTicket) {
+                                                setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
                                             }
-                                          : null
-                                  }
-                                  isClearable={false}
-                                  classNamePrefix="react-select"
-                                  styles={{
-                                      container: (base) => ({
-                                          ...base,
-                                          minWidth: 200,
-                                      }),
-                                      menu: (provided) => ({
-                                          ...provided,
-                                          zIndex: 9999,
-                                      }),
-                                  }}
-                                  onChange={async (selectedOption) => {
-                                      if (selectedOption?.value) {
-                                          try {
-                                              // 1. Update CM in Database
-                                              const dbResponse = await fetch('http://localhost:5000/api/updateBackupCM_DB', {
-                                                  method: 'PUT',
-                                                  headers: {
-                                                      'Content-Type': 'application/json',
-                                                  },
-                                                  body: JSON.stringify({
-                                                      ticketKey: row.ticketKey,
-                                                      userId: selectedOption.value,
-                                                  }),
-                                              });
 
-                                              const dbResult = await dbResponse.json();
+                                            // 3. Update CM in Google Sheet
+                                            const sheetResponse = await fetch('http://localhost:5000/api/updateBackupCM_Sheet', {
+                                                method: 'PUT',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                },
+                                                body: JSON.stringify({
+                                                    ticketKey: row.ticketKey,
+                                                    userId: selectedOption.value,
+                                                }),
+                                            });
 
-                                              console.log('DB update result:', dbResult);
+                                            const sheetResult = await sheetResponse.json();
 
-                                              // 2. Fetch fresh ticket data
-                                              const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
-                                              const refreshedData = await refreshed.json();
-
-                                              const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
-
-                                              if (updatedTicket) {
-                                                  setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
-                                              }
-
-                                              // 3. Update CM in Google Sheet
-                                              const sheetResponse = await fetch('http://localhost:5000/api/updateBackupCM_Sheet', {
-                                                  method: 'PUT',
-                                                  headers: {
-                                                      'Content-Type': 'application/json',
-                                                  },
-                                                  body: JSON.stringify({
-                                                      ticketKey: row.ticketKey,
-                                                      userId: selectedOption.value,
-                                                  }),
-                                              });
-
-                                              const sheetResult = await sheetResponse.json();
-
-                                              console.log('Sheet update result:', sheetResult);
-                                          } catch (error) {
-                                              console.error('Error updating CM:', error);
-                                          }
-                                      }
-                                  }}
-                              />
-                          ),
-                  },
-              ]
+                                            console.log('Sheet update result:', sheetResult);
+                                        } catch (error) {
+                                            console.error('Error updating CM:', error);
+                                        }
+                                    }
+                                }}
+                            />
+                        ),
+                },
+            ]
             : [
-                  {
-                      label: 'Name of CM',
-                      key: 'CM_name',
-                      render: (row) => <span>{row.CM_name || '—'}</span>,
-                  },
-              ]),
+                {
+                    label: 'Name of CM',
+                    key: 'CM_name',
+                    render: (row) => <span>{row.CM_name || '—'}</span>,
+                },
+            ]),
 
         {
             label: <span style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>Name of AM</span>,
@@ -850,6 +859,7 @@ const handleComplete = (row) => {
             label: 'Status',
             key: 'status',
             render: (row) => {
+                const isClosed = row.status === 'Closed'; // check if status is Closed
                 return (
                     <Select
                         options={[
@@ -861,34 +871,31 @@ const handleComplete = (row) => {
                             { value: 'Sent to VAO', label: 'Sent to VAO' },
                         ]}
                         value={row.status ? { label: row.status, value: row.status } : null}
-                        isClearable={Number(user?.role) === 1} // allow clearing only for CM
-                        // isDisabled={user?.role === 0} // disable for QM and others
+                        isClearable={Number(user?.role) === 1 && !isClosed} // can clear only if not closed
+                        isDisabled={isClosed} // disable dropdown if Closed
                         classNamePrefix="react-select"
                         styles={{
-                            container: (base) => ({
-                                ...base,
-                                minWidth: 180,
-                            }),
+                            container: (base) => ({ ...base, minWidth: 180 }),
                             menu: (provided) => ({ ...provided, zIndex: 9999 }),
                         }}
                         onChange={async (selectedOption) => {
-                            if (selectedOption?.value) {
+                            if (!isClosed && selectedOption?.value) { // prevent change if closed
                                 try {
-                                    // 1. Update status in backend DB
                                     const response = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
                                         method: 'PUT',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        },
+                                        headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ status: selectedOption.value }),
                                     });
-
                                     const updateResult = await response.json();
 
                                     if (updateResult.success) {
                                         console.log('✅ Status updated successfully');
 
-                                        // 2. Now fetch the fresh ticket list with your filters and page
+                                        if (selectedOption.value === 'Start') handleStart(row);
+                                        else if (selectedOption.value === 'Need More Information' || selectedOption.value === 'Sent to VAO') handlePause(row);
+                                        else if (selectedOption.value === 'Closed') handleComplete(row);
+
+                                        // Refresh ticket list
                                         const cmRegionList = selectedRegions.map((r) => r.value).join(',');
                                         const cmNameList = selectedCM.map((c) => c.value).join(',');
                                         const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
@@ -898,39 +905,29 @@ const handleComplete = (row) => {
                                         const res = await fetch(
                                             `http://localhost:5000/api/getNetflixTickets?email=${email}&role=0&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
                                         );
-
                                         const data = await res.json();
 
                                         if (data.success) {
-                                            setProjects(data.data); // Update the tickets list state
-                                            setTotalPages(data.totalPages || 1); // Update pagination if needed
-                                            // You can also update any metrics here if returned
-                                            setGlobalMetrics(
-                                                data.metrics || {
-                                                    totalTickets: 0,
-                                                    assignedTickets: 0,
-                                                    closedTickets: 0,
-                                                    startTickets: 0,
-                                                    interimTickets: 0,
-                                                    needmoreinformationTickets: 0,
-                                                    senttovaoTickets: 0,
-                                                    solutionprovidedTickets: 0,
-                                                }
-                                            );
+                                            setProjects(data.data);
+                                            setTotalPages(data.totalPages || 1);
+                                            setGlobalMetrics(data.metrics || {
+                                                totalTickets: 0,
+                                                assignedTickets: 0,
+                                                closedTickets: 0,
+                                                startTickets: 0,
+                                                interimTickets: 0,
+                                                needmoreinformationTickets: 0,
+                                                senttovaoTickets: 0,
+                                                solutionprovidedTickets: 0,
+                                            });
                                         } else {
                                             console.error('Failed to refresh ticket list');
                                         }
-                                    } else {
-                                        console.error('Status update failed', updateResult.error);
-                                    }
 
-                                    //3.If the status is updated correctly in the DB, update in the sheet as well
-                                    if (updateResult.success) {
-                                        const sheetUpdate = await fetch(`http://localhost:5000/api/updateTicketByKey_Sheet/${row.ticketKey}`, {
+                                        // Update sheet
+                                        await fetch(`http://localhost:5000/api/updateTicketByKey_Sheet/${row.ticketKey}`, {
                                             method: 'PUT',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                            },
+                                            headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ status: selectedOption.value }),
                                         });
                                     } else {
@@ -946,103 +943,47 @@ const handleComplete = (row) => {
             },
         },
 
-{
-  label: (
-    <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
-      Time <br />
-      <small style={{ fontWeight: 'normal' }}>
-        (Start / Pause / Complete)
-      </small>
-    </div>
-  ),
-  key: 'cm_time',
-  render: (row) => {
-    const rowKey = getRowKey(row);
-    const timer = timers[rowKey] || { seconds: 0, status: 'idle' };
+        {
+    label: (
+        <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>
+            UT Time <br />
+            <small style={{ fontWeight: 'normal' }}> (Start / Pause / Complete) </small>
+        </div>
+    ),
+    key: 'ut_time',
+    render: (row) => {
+        const rowKey = getRowKey(row);
+        const timer = timers[rowKey] || { seconds: 0, status: 'idle' };
 
-    const formatTime = (totalSeconds) => {
-      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-      const secs = String(totalSeconds % 60).padStart(2, '0');
-      return `${hrs}:${mins}:${secs}`;
-    };
+        const formatTime = (totalSeconds) => {
+            const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const secs = String(totalSeconds % 60).padStart(2, '0');
+            return `${hrs}:${mins}:${secs}`;
+        };
 
-    let color = 'black';
-    if (timer.status === 'running') color = 'red';
-    else if (timer.status === 'paused') color = 'orange';
-    else if (timer.status === 'completed') color = 'green';
+        let color = 'black';
+        let displayTime = timer.seconds;
 
-    const displayTime =
-      timer.status === 'completed'
-        ? formatTime(timer.finalTime ?? timer.seconds)
-        : formatTime(timer.seconds);
+        // Match SLA logic
+        if (timer.status === 'running') color = 'red';
+        else if (timer.status === 'paused') color = 'orange';
+        else if (timer.status === 'completed') {
+            color = 'green';
+            displayTime = timer.finalTime ?? timer.seconds; // final time for closed
+        }
 
-    return (
-      <span style={{ color }}>
-        <strong>{displayTime}</strong>
-      </span>
-    );
-  },
+        // Show formatted time
+        return (
+            <span style={{ color }}>
+                <strong>{formatTime(displayTime)}</strong>
+            </span>
+        );
+    },
 },
-{
-  label: "Actions",
-  key: "actions",
-  render: (row) => {
-    const rowKey = getRowKey(row);
-    const timer = timers[rowKey] || { seconds: 0, status: "idle" };
 
-    if (timer.status === "completed") {
-      return <span style={{ color: "green" }}>✅ Finalized</span>;
-    }
 
-    return (
-      <div style={{ whiteSpace: "nowrap" }}>
-        <button
-          onClick={() => handleStart(row)}
-          disabled={timer.status === "running"}
-          style={{
-            background: "transparent",
-            border: "1px solid #007bff",
-            borderRadius: "4px",
-            padding: "4px 8px",
-            cursor: timer.status === "running" ? "not-allowed" : "pointer",
-            marginRight: "8px",
-          }}
-        >
-          ▶️ Start
-        </button>
 
-        <button
-          onClick={() => handlePause(row)}
-          disabled={timer.status !== "running"}
-          style={{
-            background: "transparent",
-            border: "1px solid #ffc107",
-            borderRadius: "4px",
-            padding: "4px 8px",
-            cursor: timer.status !== "running" ? "not-allowed" : "pointer",
-            marginRight: "8px",
-          }}
-        >
-          ⏸️ Pause
-        </button>
-
-        <button
-          onClick={() => handleComplete(row)}
-          style={{
-            background: "transparent",
-            border: "1px solid #28a745",
-            borderRadius: "4px",
-            padding: "4px 8px",
-            cursor: "pointer",
-          }}
-        >
-          ✅ Complete
-        </button>
-      </div>
-    );
-  },
-},
 
 
         // {
