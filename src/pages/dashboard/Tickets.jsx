@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import '../../style/Style.css';
 import { Card } from 'react-bootstrap';
 import { Download } from 'lucide-react';
+import { space } from 'postcss/lib/list';
 
 const Tickets = () => {
     const [role, setRole] = useState(null);
@@ -240,36 +241,36 @@ const Tickets = () => {
 
     const [timers, setTimers] = useState({});
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const newTimers = {};
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         const newTimers = {};
 
-            tickets.forEach((ticket) => {
-                // Assuming you have a SLA start timestamp (example: ticket.createdAt)
-                const slaStartTime = new Date(ticket.createdAt).getTime();
+    //         tickets.forEach((ticket) => {
+    //             // Assuming you have a SLA start timestamp (example: ticket.createdAt)
+    //             const slaStartTime = new Date(ticket.createdAt).getTime();
 
-                // SLA limit in milliseconds (2 hours)
-                const slaLimit = 2 * 60 * 60 * 1000;
+    //             // SLA limit in milliseconds (2 hours)
+    //             const slaLimit = 2 * 60 * 60 * 1000;
 
-                // Time left = SLA limit - time passed
-                const timeLeft = slaLimit - (Date.now() - slaStartTime);
+    //             // Time left = SLA limit - time passed
+    //             const timeLeft = slaLimit - (Date.now() - slaStartTime);
 
-                const totalSeconds = Math.floor(timeLeft / 1000);
-                const hrs = String(Math.floor(Math.abs(totalSeconds) / 3600)).padStart(2, '0');
-                const mins = String(Math.floor((Math.abs(totalSeconds) % 3600) / 60)).padStart(2, '0');
-                const secs = String(Math.abs(totalSeconds) % 60).padStart(2, '0');
+    //             const totalSeconds = Math.floor(timeLeft / 1000);
+    //             const hrs = String(Math.floor(Math.abs(totalSeconds) / 3600)).padStart(2, '0');
+    //             const mins = String(Math.floor((Math.abs(totalSeconds) % 3600) / 60)).padStart(2, '0');
+    //             const secs = String(Math.abs(totalSeconds) % 60).padStart(2, '0');
 
-                newTimers[ticket._id] = {
-                    text: `${hrs}:${mins}:${secs}`,
-                    expired: totalSeconds < 0, // expired means SLA passed
-                };
-            });
+    //             newTimers[ticket._id] = {
+    //                 text: `${hrs}:${mins}:${secs}`,
+    //                 expired: totalSeconds < 0, // expired means SLA passed
+    //             };
+    //         });
 
-            setSlatimers(newTimers);
-        }, 1000);
+    //         setSlatimers(newTimers);
+    //     }, 1000);
 
-        return () => clearInterval(interval);
-    }, [projects]);
+    //     return () => clearInterval(interval);
+    // }, [projects]);
 
     useEffect(() => {
         setTotalCount(projects.length);
@@ -369,6 +370,35 @@ const Tickets = () => {
         };
 
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
+    }
+
+    const LiveTimer = ({initialTime}) => {
+        const parseTimeToSeconds = (timeStr) => {
+            const [h, m, s] = timeStr.split(':').map(Number)
+            return h*3600+m*60+s
+        }
+
+        const [utilizationSecondsElapsed, setUtilizationSecondsElapsed] = useState(parseTimeToSeconds(initialTime))
+
+        useEffect(() => {
+            setUtilizationSecondsElapsed(parseTimeToSeconds(initialTime))
+        }, [initialTime])
+
+        useEffect(() => {
+            const timerId = setInterval(() => {
+                setUtilizationSecondsElapsed((prev) => prev+1)
+            }, 1000)
+            return () => clearInterval(timerId)
+        }, [])
+
+        const formatTime = (totalSeconds) => {
+            const hours = String(Math.floor(totalSeconds/3600)).padStart(2, "0")
+            const minutes = String(Math.floor((totalSeconds%3600)/60)).padStart(2, "0")
+            const seconds = String(totalSeconds%60).padStart(2, "0")
+            return `${hours}:${minutes}:${seconds}` 
+        }
+
+        return <span style={{fontWeight : "bold"}}>{formatTime(utilizationSecondsElapsed)}</span>
     }
 
     const columns = [
@@ -802,79 +832,122 @@ const Tickets = () => {
                             menu: (provided) => ({ ...provided, zIndex: 9999 }),
                         }}
                         onChange={async (selectedOption) => {
-                            if (selectedOption?.value) {
-                                try {
-                                    // 1. Update status in backend DB
-                                    const response = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
-                                        method: 'PUT',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify({ status: selectedOption.value }),
-                                    });
-
-                                    const updateResult = await response.json();
-
-                                    if (updateResult.success) {
-                                        console.log('✅ Status updated successfully');
-
-                                        // 2. Now fetch the fresh ticket list with your filters and page
-                                        const cmRegionList = selectedRegions.map((r) => r.value).join(',');
-                                        const cmNameList = selectedCM.map((c) => c.value).join(',');
-                                        const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
-                                        const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
-                                        const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
-
-                                        const res = await fetch(
-                                            `http://localhost:5000/api/getNetflixTickets?email=${email}&role=0&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
-                                        );
-
-                                        const data = await res.json();
-
-                                        if (data.success) {
-                                            setProjects(data.data); // Update the tickets list state
-                                            setTotalPages(data.totalPages || 1); // Update pagination if needed
-                                            // You can also update any metrics here if returned
-                                            setGlobalMetrics(
-                                                data.metrics || {
-                                                    totalTickets: 0,
-                                                    assignedTickets: 0,
-                                                    closedTickets: 0,
-                                                    startTickets: 0,
-                                                    interimTickets: 0,
-                                                    needmoreinformationTickets: 0,
-                                                    senttovaoTickets: 0,
-                                                    solutionprovidedTickets: 0,
-                                                }
-                                            );
-                                        } else {
-                                            console.error('Failed to refresh ticket list');
-                                        }
-                                    } else {
-                                        console.error('Status update failed', updateResult.error);
-                                    }
-
-                                    //3.If the status is updated correctly in the DB, update in the sheet as well
-                                    if (updateResult.success) {
-                                        const sheetUpdate = await fetch(`http://localhost:5000/api/updateTicketByKey_Sheet/${row.ticketKey}`, {
-                                            method: 'PUT',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                            },
-                                            body: JSON.stringify({ status: selectedOption.value }),
-                                        });
-                                    } else {
-                                        console.error('Status update failed', updateResult.error);
-                                    }
-                                } catch (error) {
-                                    console.error('Error during status update or fetching tickets:', error);
+                            if (!selectedOption?.value) return;
+                        
+                            try {
+                                const newStatus = selectedOption.value;
+                        
+                                // 1. Update status in backend DB
+                                const dbResponse = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: newStatus }),
+                                });
+                        
+                                const dbResult = await dbResponse.json();
+                        
+                                if (!dbResult.success) {
+                                    console.error('DB Status update failed', dbResult.error);
+                                    return;
                                 }
+                                console.log('✅ Status updated successfully in DB');
+                        
+                                // 2. Update utilization timer for this ticket
+                                const utilResponse = await fetch(`http://localhost:5000/api/ticketAction/${row.ticketKey}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        status: newStatus,
+                                        timestamp: new Date().toISOString(),
+                                        deadline: row?.slaData?.deadline || null
+                                    }),
+                                });
+                        
+                                const utilResult = await utilResponse.json();
+                                if (!utilResult.success) {
+                                    console.error('Utilization update failed', utilResult.error);
+                                } else {
+                                    console.log('✅ Utilization timer updated');
+                                }
+                        
+                                // 3. Refresh tickets list
+                                const cmRegionList = selectedRegions.map((r) => r.value).join(',');
+                                const cmNameList = selectedCM.map((c) => c.value).join(',');
+                                const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
+                                const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
+                                const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
+                        
+                                const res = await fetch(
+                                    `http://localhost:5000/api/getNetflixTickets?email=${email}&role=0&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
+                                );
+                                const data = await res.json();
+                        
+                                if (data.success) {
+                                    setProjects(data.data);
+                                    setTotalPages(data.totalPages || 1);
+                                    setGlobalMetrics(data.metrics || {
+                                        totalTickets: 0,
+                                        assignedTickets: 0,
+                                        closedTickets: 0,
+                                        startTickets: 0,
+                                        interimTickets: 0,
+                                        needmoreinformationTickets: 0,
+                                        senttovaoTickets: 0,
+                                        solutionprovidedTickets: 0,
+                                    });
+                                } else {
+                                    console.error('Failed to refresh ticket list');
+                                }
+
+                                
+                                // 4. Update Excel Sheet
+                                const sheetResponse = await fetch(`http://localhost:5000/api/updateTicketByKey_Sheet/${row.ticketKey}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: newStatus }),
+                                });
+                        
+                                const sheetResult = await sheetResponse.json();
+                                if (!sheetResult.success) {
+                                    console.error('Sheet update failed', sheetResult.error);
+                                } else {
+                                    console.log('✅ Sheet updated successfully');
+                                }
+                        
+                            } catch (error) {
+                                console.error('Error during status update process:', error);
                             }
                         }}
+                        
                     />
                 );
             },
         },
+
+        {
+            label : "Timer",
+            key : "utilization",
+            render: (row) => {
+                const util = row.utilization
+                if(!util){
+                    return <span style={{color : "black"}}><strong>00:00:00</strong></span>
+                }
+
+                if(util.status === "Start"){
+                    return(
+                        <span style={{color : "red"}}>
+                            <LiveTimer initialTime={util.utTimer}></LiveTimer>
+                        </span>
+                    )
+                }
+
+                return (
+                    <span style={{color : "black"}}>
+                        <strong>{util.utTimer}</strong>
+                    </span>
+                )
+            }
+        }
 
         // {
         //     label: (
