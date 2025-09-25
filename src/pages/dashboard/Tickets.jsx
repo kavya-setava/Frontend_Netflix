@@ -373,54 +373,53 @@ const Tickets = () => {
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
     }
 
-    const LiveTimer = ({initialTime}) => {
+    const LiveTimer = ({ initialTime }) => {
         const parseTimeToSeconds = (timeStr) => {
-            const [h, m, s] = timeStr.split(':').map(Number)
-            return h*3600+m*60+s
-        }
+            const [h, m, s] = timeStr.split(':').map(Number);
+            return h * 3600 + m * 60 + s;
+        };
 
-        const [utilizationSecondsElapsed, setUtilizationSecondsElapsed] = useState(parseTimeToSeconds(initialTime))
+        const [utilizationSecondsElapsed, setUtilizationSecondsElapsed] = useState(parseTimeToSeconds(initialTime));
 
         useEffect(() => {
-            setUtilizationSecondsElapsed(parseTimeToSeconds(initialTime))
-        }, [initialTime])
+            setUtilizationSecondsElapsed(parseTimeToSeconds(initialTime));
+        }, [initialTime]);
 
         useEffect(() => {
             const timerId = setInterval(() => {
-                setUtilizationSecondsElapsed((prev) => prev+1)
-            }, 1000)
-            return () => clearInterval(timerId)
-        }, [])
+                setUtilizationSecondsElapsed((prev) => prev + 1);
+            }, 1000);
+            return () => clearInterval(timerId);
+        }, []);
 
         const formatTime = (totalSeconds) => {
-            const hours = String(Math.floor(totalSeconds/3600)).padStart(2, "0")
-            const minutes = String(Math.floor((totalSeconds%3600)/60)).padStart(2, "0")
-            const seconds = String(totalSeconds%60).padStart(2, "0")
-            return `${hours}:${minutes}:${seconds}` 
-        }
+            const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        };
 
-        return <span style={{fontWeight : "bold"}}>{formatTime(utilizationSecondsElapsed)}</span>
-    }
+        return <span style={{ fontWeight: 'bold' }}>{formatTime(utilizationSecondsElapsed)}</span>;
+    };
 
-    // const [asapStates, setAsapStates] = React.useState({});
-    // useEffect(() => {
-    //     if (!projects.length) return;
-    
-    //     setAsapStates((prev) => {
-    //         const updatedStates = { ...prev };
-    
-    //         projects.forEach((row) => {
-    //             // Only set ASAP if this ticketKey doesn’t already exist in state
-    //             if (!(row.ticketKey in updatedStates)) {
-    //                 updatedStates[row.ticketKey] =
-    //                     row.asap === true || row.asap === "true";
-    //             }
-    //         });
-    
-    //         return updatedStates;
-    //     });
-    // }, [projects]);
+    const [asapStates, setAsapStates] = React.useState({});
 
+    useEffect(() => {
+        if (!projects.length) return;
+
+        setAsapStates((prev) => {
+            const updatedStates = { ...prev };
+
+            projects.forEach((row) => {
+                // Initialize with backend value (row.asap), not hardcoded true
+                if (!(row.ticketKey in updatedStates)) {
+                    updatedStates[row.ticketKey] = !!row.asap;
+                }
+            });
+
+            return updatedStates;
+        });
+    }, [projects]);
 
     const columns = [
         // {
@@ -827,70 +826,56 @@ const Tickets = () => {
             key: 'cm_region',
         },
 
-        // {
-        //     label: (
-        //         <div style={{ whiteSpace: "nowrap", width: "auto", display: "inline-block" }}>
-        //             ASAP
-        //         </div>
-        //     ),
-        //     key: "asap",
-        //     render: (row) => {
-        //         const isChecked = asapStates[row.ticketKey] || false;
+        {
+            label: <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>ASAP</div>,
+            key: 'asap',
+            render: (row) => {
+                const isChecked = asapStates[row.ticketKey] || false;
 
-        //         const handleToggle = async () => {
-        //             const newValue = !isChecked;
+                const handleToggle = async () => {
+                    const newValue = !isChecked;
 
-        //             // Optimistic UI
-        //             setAsapStates((prev) => ({
-        //                 ...prev,
-        //                 [row.ticketKey]: newValue,
-        //             }));
+                    // Optimistic UI update
+                    setAsapStates((prev) => ({
+                        ...prev,
+                        [row.ticketKey]: newValue,
+                    }));
 
-        //             try {
-        //                 const response = await fetch(
-        //                     `http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`,
-        //                     {
-        //                         method: "PUT",
-        //                         headers: { "Content-Type": "application/json" },
-        //                         body: JSON.stringify({ asap: newValue.toString() }),
-        //                     }
-        //                 );
-        //                 const result = await response.json();
+                    try {
+                        const response = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            // ✅ send boolean, not string
+                            body: JSON.stringify({ asap: newValue }),
+                        });
+                        const result = await response.json();
 
-        //                 if (!result.success) {
-        //                     // rollback on failure
-        //                     setAsapStates((prev) => ({
-        //                         ...prev,
-        //                         [row.ticketKey]: isChecked,
-        //                     }));
-        //                 }
-        //             } catch (err) {
-        //                 console.error("Error updating ASAP:", err);
-        //                 setAsapStates((prev) => ({
-        //                     ...prev,
-        //                     [row.ticketKey]: isChecked,
-        //                 }));
-        //             }
-        //         };
+                        if (!result.success) {
+                            // rollback if update fails
+                            setAsapStates((prev) => ({
+                                ...prev,
+                                [row.ticketKey]: isChecked,
+                            }));
+                        }
+                    } catch (err) {
+                        console.error('Error updating ASAP:', err);
+                        setAsapStates((prev) => ({
+                            ...prev,
+                            [row.ticketKey]: isChecked,
+                        }));
+                    }
+                };
 
-        //         return (
-        //             <div
-        //                 className={`relative h-6 w-12 cursor-pointer ${isChecked ? "shadow-lg bg-yellow-50 rounded-md" : ""
-        //                     }`}
-        //             >
-        //                 <label className="relative h-6 w-12">
-        //                     <input
-        //                         type="checkbox"
-        //                         className="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0"
-        //                         checked={isChecked}
-        //                         onChange={handleToggle}
-        //                     />
-        //                     <span className="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
-        //                 </label>
-        //             </div>
-        //         );
-        //     },
-        // },
+                return (
+                    <div className={`relative h-6 w-12 cursor-pointer ${isChecked ? 'shadow-lg bg-yellow-50 rounded-md' : ''}`}>
+                        <label className="relative h-6 w-12">
+                            <input type="checkbox" className="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0" checked={isChecked} onChange={handleToggle} />
+                            <span className="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+                        </label>
+                    </div>
+                );
+            },
+        },
 
         {
             label: 'Status',
@@ -903,8 +888,9 @@ const Tickets = () => {
                             { value: 'Interim', label: 'Interim' },
                             { value: 'Solution Provided', label: 'Solution Provided' },
                             { value: 'Need More Information', label: 'Need More Information' },
-                            { value: 'Closed', label: 'Closed' },
                             { value: 'Sent to VAO', label: 'Sent to VAO' },
+                            { value: 'On Hold', label: 'On Hold' },
+                            { value: 'Closed', label: 'Closed' },
                         ]}
                         value={row.status ? { label: row.status, value: row.status } : null}
                         isClearable={Number(user?.role) === 1} // allow clearing only for CM
@@ -919,125 +905,137 @@ const Tickets = () => {
                         }}
                         onChange={async (selectedOption) => {
                             if (!selectedOption?.value) return;
-                        
+
                             try {
                                 const newStatus = selectedOption.value;
-                        
+
+                                const dbPayload = { status: newStatus };
+                                const shouldUnsetAsap = newStatus !== "Start";
+                                if (shouldUnsetAsap) {
+                                    dbPayload.asap = false;
+                                }
+
                                 // 1. Update status in backend DB
                                 const dbResponse = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: newStatus }),
+                                    body: JSON.stringify(dbPayload),
                                 });
-                        
+
                                 const dbResult = await dbResponse.json();
-                        
+
                                 if (!dbResult.success) {
                                     console.error('DB Status update failed', dbResult.error);
                                     return;
                                 }
                                 console.log('✅ Status updated successfully in DB');
-                        
+
+                                if (shouldUnsetAsap) {
+                                    setAsapStates((prev) => ({
+                                        ...prev,
+                                        [row.ticketKey]: false,
+                                    }));
+                                }
+
                                 // 2. Update utilization timer for this ticket
-                                // const utilResponse = await fetch(`http://localhost:5000/api/ticketAction/${row.ticketKey}`, {
-                                //     method: 'PUT',
-                                //     headers: { 'Content-Type': 'application/json' },
-                                //     body: JSON.stringify({
-                                //         status: newStatus,
-                                //         timestamp: new Date().toISOString(),
-                                //         deadline: row?.slaData?.deadline || null
-                                //     }),
-                                // });
-                        
-                                // const utilResult = await utilResponse.json();
-                                // if (!utilResult.success) {
-                                //     console.error('Utilization update failed', utilResult.error);
-                                // } else {
-                                //     console.log('✅ Utilization timer updated');
-                                // }
-                        
+                                const utilResponse = await fetch(`http://localhost:5000/api/ticketAction/${row.ticketKey}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        status: newStatus,
+                                        timestamp: new Date().toISOString(),
+                                        deadline: row?.slaData?.deadline || null,
+                                    }),
+                                });
+
+                                const utilResult = await utilResponse.json();
+                                if (!utilResult.success) {
+                                    console.error('Utilization update failed', utilResult.error);
+                                } else {
+                                    console.log('✅ Utilization timer updated');
+                                }
+
                                 // 3. Refresh tickets list
                                 const cmRegionList = selectedRegions.map((r) => r.value).join(',');
                                 const cmNameList = selectedCM.map((c) => c.value).join(',');
                                 const ticketKeyList = selectedTicketId.map((t) => t.value).join(',');
                                 const createdFrom = startDate ? startDate.toISOString().split('T')[0] : '';
                                 const createdTo = endDate ? endDate.toISOString().split('T')[0] : '';
-                        
+
                                 const res = await fetch(
                                     `http://localhost:5000/api/getNetflixTickets?email=${email}&role=0&page=${page}&limit=25&cmRegionList=${cmRegionList}&cmNameList=${cmNameList}&ticketKeyList=${ticketKeyList}&createdFrom=${createdFrom}&createdTo=${createdTo}`
                                 );
                                 const data = await res.json();
-                        
+
                                 if (data.success) {
                                     setProjects(data.data);
                                     setTotalPages(data.totalPages || 1);
-                                    setGlobalMetrics(data.metrics || {
-                                        totalTickets: 0,
-                                        assignedTickets: 0,
-                                        closedTickets: 0,
-                                        startTickets: 0,
-                                        interimTickets: 0,
-                                        needmoreinformationTickets: 0,
-                                        senttovaoTickets: 0,
-                                        solutionprovidedTickets: 0,
-                                    });
+                                    setGlobalMetrics(
+                                        data.metrics || {
+                                            totalTickets: 0,
+                                            assignedTickets: 0,
+                                            closedTickets: 0,
+                                            startTickets: 0,
+                                            interimTickets: 0,
+                                            needmoreinformationTickets: 0,
+                                            senttovaoTickets: 0,
+                                            solutionprovidedTickets: 0,
+                                        }
+                                    );
                                 } else {
                                     console.error('Failed to refresh ticket list');
                                 }
 
-                                
                                 // 4. Update Excel Sheet
                                 const sheetResponse = await fetch(`http://localhost:5000/api/updateTicketByKey_Sheet/${row.ticketKey}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ status: newStatus }),
                                 });
-                        
+
                                 const sheetResult = await sheetResponse.json();
                                 if (!sheetResult.success) {
                                     console.error('Sheet update failed', sheetResult.error);
                                 } else {
                                     console.log('✅ Sheet updated successfully');
                                 }
-                        
                             } catch (error) {
                                 console.error('Error during status update process:', error);
                             }
                         }}
-                        
                     />
                 );
             },
         },
 
         {
-            label : (
-                <div style={{ whiteSpace: "nowrap", width: "auto", display: "inline-block" }}>
-                    UT Timer
-                </div>
-            ),
-            key : "utilization",
+            label: <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>UT Timer</div>,
+            key: 'utilization',
             render: (row) => {
-                const util = row.utilization
-                if(!util){
-                    return <span style={{color : "black"}}><strong>00:00:00</strong></span>
+                const util = row.utilization;
+                if (!util) {
+                    return (
+                        <span style={{ color: 'black' }}>
+                            <strong>00:00:00</strong>
+                        </span>
+                    );
                 }
 
-                if(util.status === "Start"){
-                    return(
-                        <span style={{color : "red"}}>
+                if (util.status === 'Start') {
+                    return (
+                        <span style={{ color: 'red' }}>
                             <LiveTimer initialTime={util.utTimer}></LiveTimer>
                         </span>
-                    )
+                    );
                 }
 
                 return (
-                    <span style={{color : "black"}}>
+                    <span style={{ color: 'black' }}>
                         <strong>{util.utTimer}</strong>
                     </span>
-                )
-            }
-        }
+                );
+            },
+        },
 
         // {
         //     label: (
