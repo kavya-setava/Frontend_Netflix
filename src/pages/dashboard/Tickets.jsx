@@ -18,6 +18,7 @@ const Tickets = () => {
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
     const email = localStorage.getItem('email');
+    // const email = "athak@netflixcontractors.com";
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
@@ -400,6 +401,26 @@ const Tickets = () => {
 
         return <span style={{fontWeight : "bold"}}>{formatTime(utilizationSecondsElapsed)}</span>
     }
+
+    // const [asapStates, setAsapStates] = React.useState({});
+    // useEffect(() => {
+    //     if (!projects.length) return;
+    
+    //     setAsapStates((prev) => {
+    //         const updatedStates = { ...prev };
+    
+    //         projects.forEach((row) => {
+    //             // Only set ASAP if this ticketKey doesn’t already exist in state
+    //             if (!(row.ticketKey in updatedStates)) {
+    //                 updatedStates[row.ticketKey] =
+    //                     row.asap === true || row.asap === "true";
+    //             }
+    //         });
+    
+    //         return updatedStates;
+    //     });
+    // }, [projects]);
+
 
     const columns = [
         // {
@@ -806,6 +827,71 @@ const Tickets = () => {
             key: 'cm_region',
         },
 
+        // {
+        //     label: (
+        //         <div style={{ whiteSpace: "nowrap", width: "auto", display: "inline-block" }}>
+        //             ASAP
+        //         </div>
+        //     ),
+        //     key: "asap",
+        //     render: (row) => {
+        //         const isChecked = asapStates[row.ticketKey] || false;
+
+        //         const handleToggle = async () => {
+        //             const newValue = !isChecked;
+
+        //             // Optimistic UI
+        //             setAsapStates((prev) => ({
+        //                 ...prev,
+        //                 [row.ticketKey]: newValue,
+        //             }));
+
+        //             try {
+        //                 const response = await fetch(
+        //                     `http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`,
+        //                     {
+        //                         method: "PUT",
+        //                         headers: { "Content-Type": "application/json" },
+        //                         body: JSON.stringify({ asap: newValue.toString() }),
+        //                     }
+        //                 );
+        //                 const result = await response.json();
+
+        //                 if (!result.success) {
+        //                     // rollback on failure
+        //                     setAsapStates((prev) => ({
+        //                         ...prev,
+        //                         [row.ticketKey]: isChecked,
+        //                     }));
+        //                 }
+        //             } catch (err) {
+        //                 console.error("Error updating ASAP:", err);
+        //                 setAsapStates((prev) => ({
+        //                     ...prev,
+        //                     [row.ticketKey]: isChecked,
+        //                 }));
+        //             }
+        //         };
+
+        //         return (
+        //             <div
+        //                 className={`relative h-6 w-12 cursor-pointer ${isChecked ? "shadow-lg bg-yellow-50 rounded-md" : ""
+        //                     }`}
+        //             >
+        //                 <label className="relative h-6 w-12">
+        //                     <input
+        //                         type="checkbox"
+        //                         className="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0"
+        //                         checked={isChecked}
+        //                         onChange={handleToggle}
+        //                     />
+        //                     <span className="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+        //                 </label>
+        //             </div>
+        //         );
+        //     },
+        // },
+
         {
             label: 'Status',
             key: 'status',
@@ -853,22 +939,22 @@ const Tickets = () => {
                                 console.log('✅ Status updated successfully in DB');
                         
                                 // 2. Update utilization timer for this ticket
-                                const utilResponse = await fetch(`http://localhost:5000/api/ticketAction/${row.ticketKey}`, {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        status: newStatus,
-                                        timestamp: new Date().toISOString(),
-                                        deadline: row?.slaData?.deadline || null
-                                    }),
-                                });
+                                // const utilResponse = await fetch(`http://localhost:5000/api/ticketAction/${row.ticketKey}`, {
+                                //     method: 'PUT',
+                                //     headers: { 'Content-Type': 'application/json' },
+                                //     body: JSON.stringify({
+                                //         status: newStatus,
+                                //         timestamp: new Date().toISOString(),
+                                //         deadline: row?.slaData?.deadline || null
+                                //     }),
+                                // });
                         
-                                const utilResult = await utilResponse.json();
-                                if (!utilResult.success) {
-                                    console.error('Utilization update failed', utilResult.error);
-                                } else {
-                                    console.log('✅ Utilization timer updated');
-                                }
+                                // const utilResult = await utilResponse.json();
+                                // if (!utilResult.success) {
+                                //     console.error('Utilization update failed', utilResult.error);
+                                // } else {
+                                //     console.log('✅ Utilization timer updated');
+                                // }
                         
                                 // 3. Refresh tickets list
                                 const cmRegionList = selectedRegions.map((r) => r.value).join(',');
@@ -925,7 +1011,11 @@ const Tickets = () => {
         },
 
         {
-            label : "Timer",
+            label : (
+                <div style={{ whiteSpace: "nowrap", width: "auto", display: "inline-block" }}>
+                    UT Timer
+                </div>
+            ),
             key : "utilization",
             render: (row) => {
                 const util = row.utilization
