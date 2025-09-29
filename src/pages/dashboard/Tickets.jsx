@@ -421,6 +421,27 @@ const Tickets = () => {
         });
     }, [projects]);
 
+    useEffect(() => {
+        if (role !== 1) return; // Only poll for CM
+      
+        const interval = setInterval(async () => {
+          try {
+            const res = await fetch(
+              `http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25`
+            );
+            const data = await res.json();
+            if (data.success) {
+              setProjects(data.data);
+            }
+            console.log("Polling ");
+          } catch (err) {
+            console.error("Polling error:", err);
+          }
+        }, 5000); // Poll every 5 seconds
+      
+        return () => clearInterval(interval); // Cleanup
+      }, [email, role, page]);
+
     const columns = [
         // {
         //     label: 'S. No',
@@ -866,15 +887,6 @@ const Tickets = () => {
                                           [row.ticketKey]: isChecked,
                                       }));
                                   }
-
-                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
-                                  const refreshedData = await refreshed.json();
-
-                                  const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
-
-                                  if (updatedTicket) {
-                                      setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
-                                  }
                               } catch (err) {
                                   console.error('Error updating ASAP:', err);
                                   setAsapStates((prev) => ({
@@ -888,7 +900,7 @@ const Tickets = () => {
                               <div className={`relative h-6 w-12 cursor-pointer ${isChecked ? 'shadow-lg bg-yellow-50 rounded-md' : ''}`}>
                                   <label className="relative h-6 w-12">
                                       <input type="checkbox" className="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0" checked={isChecked} onChange={handleToggle} />
-                                      <span className="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+                                      <span className="block h-full rounded-full bg-[#c1c1c1] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
                                   </label>
                               </div>
                           );
