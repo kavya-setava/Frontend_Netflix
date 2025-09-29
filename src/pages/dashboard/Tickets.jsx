@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    const email = localStorage.getItem('email');
-    // const email = "athak@netflixcontractors.com";
+    // const email = localStorage.getItem('email');
+    const email = 'athak@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
@@ -855,9 +855,7 @@ const Tickets = () => {
                                       method: 'PUT',
                                       headers: { 'Content-Type': 'application/json' },
                                       // ✅ send boolean, not string
-                                      body: JSON.stringify({ asap: newValue,
-                                        backupEmail : row.backupCM_email
-                                       }),
+                                      body: JSON.stringify({ asap: newValue, backupEmail: row.backupCM_email }),
                                   });
                                   const result = await response.json();
 
@@ -867,6 +865,15 @@ const Tickets = () => {
                                           ...prev,
                                           [row.ticketKey]: isChecked,
                                       }));
+                                  }
+
+                                  const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                                  const refreshedData = await refreshed.json();
+
+                                  const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                                  if (updatedTicket) {
+                                      setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
                                   }
                               } catch (err) {
                                   console.error('Error updating ASAP:', err);
@@ -923,9 +930,7 @@ const Tickets = () => {
                             try {
                                 const newStatus = selectedOption.value;
 
-                                const dbPayload = { status: newStatus,
-                                    backupEmail : row.backupCM_email
-                                };
+                                const dbPayload = { status: newStatus, backupEmail: row.backupCM_email };
                                 const shouldUnsetAsap = newStatus !== 'Start';
                                 if (shouldUnsetAsap) {
                                     dbPayload.asap = false;
