@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    // const email = localStorage.getItem('email');
-    const email = 'athak@netflixcontractors.com';
+    const email = localStorage.getItem('email');
+    // const email = 'athak@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
@@ -427,20 +427,21 @@ const Tickets = () => {
         const interval = setInterval(async () => {
           try {
             const res = await fetch(
-              `http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25`
+              `http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25&status=${
+                    selectedStatus || ' '}`
             );
             const data = await res.json();
             if (data.success) {
               setProjects(data.data);
             }
-            console.log("Polling ");
+            console.log(`Polling ${selectedStatus}`);
           } catch (err) {
             console.error("Polling error:", err);
           }
         }, 5000); // Poll every 5 seconds
       
         return () => clearInterval(interval); // Cleanup
-      }, [email, role, page]);
+      }, [email, role, page, selectedStatus]);
 
     const columns = [
         // {
