@@ -439,6 +439,8 @@ const Tickets = () => {
                 if (totalSeconds <= 1800 && totalSeconds > 600) badgeClass = 'bg-warning text-dark';
                 if (totalSeconds <= 600) badgeClass = 'bg-danger';
 
+                const highlightStyle = Number(user?.role) === 1 && row.asap ? { backgroundColor: '#000000', border: '1px solid #ffeeba' } : {};
+
                 return (
                     <a
                         href={`https://netflix.atlassian.net/browse/${row.ticketKey}`}
@@ -451,6 +453,9 @@ const Tickets = () => {
                             whiteSpace: 'nowrap',
                             width: 'auto',
                             display: 'inline-block',
+                            ...highlightStyle,
+                            pointerEvents: row.enable || Number(user?.role) === 0 ? 'auto' : 'none',
+                            opacity: row.enable || Number(user?.role) === 0 ? 1 : 0.5,
                         }}
                     >
                         {row.ticketKey}
@@ -573,12 +578,13 @@ const Tickets = () => {
             label: 'Start Date',
             key: 'startDateTime',
         },
+
         {
             label: 'End Date',
             key: 'endDateTime',
         },
 
-        ...(Number(user?.role) !== 1
+        ...(Number(user?.role) === 0
             ? [
                   {
                       label: 'Name of CM',
@@ -692,6 +698,7 @@ const Tickets = () => {
                         value={selectedTask}
                         placeholder="Select Task Type"
                         classNamePrefix="react-select"
+                        isDisabled={!(row.enable || Number(user?.role) === 0)}
                         styles={{
                             container: (base) => ({ ...base, minWidth: 180 }),
                             singleValue: (provided) => ({
@@ -826,56 +833,62 @@ const Tickets = () => {
             key: 'cm_region',
         },
 
-        {
-            label: <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>ASAP</div>,
-            key: 'asap',
-            render: (row) => {
-                const isChecked = asapStates[row.ticketKey] || false;
+        ...(Number(user?.role) === 0
+            ? [
+                  {
+                      label: <div style={{ whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}>ASAP</div>,
+                      key: 'asap',
+                      render: (row) => {
+                          const isChecked = asapStates[row.ticketKey] || false;
 
-                const handleToggle = async () => {
-                    const newValue = !isChecked;
+                          const handleToggle = async () => {
+                              const newValue = !isChecked;
 
-                    // Optimistic UI update
-                    setAsapStates((prev) => ({
-                        ...prev,
-                        [row.ticketKey]: newValue,
-                    }));
+                              // Optimistic UI update
+                              setAsapStates((prev) => ({
+                                  ...prev,
+                                  [row.ticketKey]: newValue,
+                              }));
 
-                    try {
-                        const response = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            // ✅ send boolean, not string
-                            body: JSON.stringify({ asap: newValue }),
-                        });
-                        const result = await response.json();
+                              try {
+                                  const response = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      // ✅ send boolean, not string
+                                      body: JSON.stringify({ asap: newValue,
+                                        backupEmail : row.backupCM_email
+                                       }),
+                                  });
+                                  const result = await response.json();
 
-                        if (!result.success) {
-                            // rollback if update fails
-                            setAsapStates((prev) => ({
-                                ...prev,
-                                [row.ticketKey]: isChecked,
-                            }));
-                        }
-                    } catch (err) {
-                        console.error('Error updating ASAP:', err);
-                        setAsapStates((prev) => ({
-                            ...prev,
-                            [row.ticketKey]: isChecked,
-                        }));
-                    }
-                };
+                                  if (!result.success) {
+                                      // rollback if update fails
+                                      setAsapStates((prev) => ({
+                                          ...prev,
+                                          [row.ticketKey]: isChecked,
+                                      }));
+                                  }
+                              } catch (err) {
+                                  console.error('Error updating ASAP:', err);
+                                  setAsapStates((prev) => ({
+                                      ...prev,
+                                      [row.ticketKey]: isChecked,
+                                  }));
+                              }
+                          };
 
-                return (
-                    <div className={`relative h-6 w-12 cursor-pointer ${isChecked ? 'shadow-lg bg-yellow-50 rounded-md' : ''}`}>
-                        <label className="relative h-6 w-12">
-                            <input type="checkbox" className="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0" checked={isChecked} onChange={handleToggle} />
-                            <span className="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
-                        </label>
-                    </div>
-                );
-            },
-        },
+                          return (
+                              <div className={`relative h-6 w-12 cursor-pointer ${isChecked ? 'shadow-lg bg-yellow-50 rounded-md' : ''}`}>
+                                  <label className="relative h-6 w-12">
+                                      <input type="checkbox" className="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0" checked={isChecked} onChange={handleToggle} />
+                                      <span className="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+                                  </label>
+                              </div>
+                          );
+                      },
+                  },
+              ]
+            : []),
 
         {
             label: 'Status',
@@ -893,7 +906,8 @@ const Tickets = () => {
                             { value: 'Closed', label: 'Closed' },
                         ]}
                         value={row.status ? { label: row.status, value: row.status } : null}
-                        isClearable={Number(user?.role) === 1} // allow clearing only for CM
+                        // isClearable={Number(user?.role) === 1} // allow clearing only for CM
+                        isDisabled={!(row.enable || Number(user?.role) === 0)}
                         // isDisabled={user?.role === 0} // disable for QM and others
                         classNamePrefix="react-select"
                         styles={{
@@ -909,8 +923,10 @@ const Tickets = () => {
                             try {
                                 const newStatus = selectedOption.value;
 
-                                const dbPayload = { status: newStatus };
-                                const shouldUnsetAsap = newStatus !== "Start";
+                                const dbPayload = { status: newStatus,
+                                    backupEmail : row.backupCM_email
+                                };
+                                const shouldUnsetAsap = newStatus !== 'Start';
                                 if (shouldUnsetAsap) {
                                     dbPayload.asap = false;
                                 }
@@ -929,6 +945,7 @@ const Tickets = () => {
                                     return;
                                 }
                                 console.log('✅ Status updated successfully in DB');
+                                // console.log(row.backupCM_email);
 
                                 if (shouldUnsetAsap) {
                                     setAsapStates((prev) => ({
@@ -1375,7 +1392,7 @@ const Tickets = () => {
                     </button>
                 </div>
 
-                {projects.length === 0 ? <div className="text-center text-muted py-4 fw-bold fs-5">No Data Available</div> : <ReusableTable columns={columns} data={projects} />}
+                {projects.length === 0 ? <div className="text-center text-muted py-4 fw-bold fs-5">No Data Available</div> : <ReusableTable columns={columns} data={projects} userRole={role} />}
 
                 {/* Last Comment pop-up */}
 

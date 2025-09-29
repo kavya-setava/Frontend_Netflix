@@ -51,6 +51,14 @@ body {
   grid-template-columns: repeat(1, 1fr); 
 }
 
+
+table.table-striped tbody tr.table-warning:nth-child(odd),
+table.table-striped tbody tr.table-warning:nth-child(even) {
+  background-color: #7abdf5 !important; 
+  border: #e74c3c !important;
+}
+
+
 @media (min-width: 768px) {
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr); 
