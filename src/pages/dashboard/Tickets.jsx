@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    const email = localStorage.getItem('email');
-    // const email = 'athak@netflixcontractors.com';
+    // const email = localStorage.getItem('email');
+    const email = 'saada@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
@@ -799,7 +799,7 @@ const Tickets = () => {
                         options={uniqueOptions}
                         value={selectedSubTask}
                         placeholder={uniqueOptions.length > 0 ? 'Select Sub Task' : 'No Sub Task'}
-                        isDisabled={uniqueOptions.length === 0}
+                        isDisabled={uniqueOptions.length === 0 || (!(row.enable || Number(user?.role) === 0))}
                         classNamePrefix="react-select"
                         styles={{
                             container: (base) => ({ ...base, minWidth: 180 }),
