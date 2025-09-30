@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    // const email = localStorage.getItem('email');
-    const email = 'saada@netflixcontractors.com';
+    const email = localStorage.getItem('email');
+    // const email = 'saada@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
