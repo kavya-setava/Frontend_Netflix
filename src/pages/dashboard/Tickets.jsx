@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    // const email = localStorage.getItem('email');
-    const email = 'krajappa@netflixcontractors.com';
+    const email = localStorage.getItem('email');
+    // const email = 'krajappa@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
@@ -217,13 +217,13 @@ const Tickets = () => {
             filtered = filtered.filter((t) => t.status === selectedStatus);
         }
 
-        // 🔑 Always rebuild options from filtered tickets
         const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
         setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
 
         const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
         setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
     }, [allTicketsData, selectedRegions, selectedCM, selectedStatus]);
+
 
     const fetchAllTicketsForDropdowns = async () => {
         try {
@@ -609,7 +609,7 @@ const Tickets = () => {
                       label: 'Name of CM',
                       key: 'CM_name',
                       render: (row) =>
-                          row.status === 'Closed' ? (
+                          row.status === 'Closed' || row.status === 'Start' ? (
                               <span>{row.CM_name || '—'}</span>
                           ) : (
                               <Select
@@ -659,8 +659,7 @@ const Tickets = () => {
 
                                               console.log('DB update result:', dbResult);
 
-
-                                               // 2. Put data for fresh tickets
+                                              // 2. Put data for fresh tickets
                                               const dbPayload = { asap: row.asap, backupEmail: selectedOption.email, previousEmail: previousEmail };
 
                                               const updateTicketPut = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
