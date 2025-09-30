@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    const email = localStorage.getItem('email');
-    // const email = 'saada@netflixcontractors.com';
+    // const email = localStorage.getItem('email');
+    const email = 'krajappa@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
 
@@ -423,25 +423,22 @@ const Tickets = () => {
 
     useEffect(() => {
         if (role !== 1) return; // Only poll for CM
-      
+
         const interval = setInterval(async () => {
-          try {
-            const res = await fetch(
-              `http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25&status=${
-                    selectedStatus || ' '}`
-            );
-            const data = await res.json();
-            if (data.success) {
-              setProjects(data.data);
+            try {
+                const res = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25&status=${selectedStatus || ' '}`);
+                const data = await res.json();
+                if (data.success) {
+                    setProjects(data.data);
+                }
+                console.log(`Polling ${selectedStatus}`);
+            } catch (err) {
+                console.error('Polling error:', err);
             }
-            console.log(`Polling ${selectedStatus}`);
-          } catch (err) {
-            console.error("Polling error:", err);
-          }
         }, 5000); // Poll every 5 seconds
-      
+
         return () => clearInterval(interval); // Cleanup
-      }, [email, role, page, selectedStatus]);
+    }, [email, role, page, selectedStatus]);
 
     const columns = [
         // {
@@ -619,6 +616,7 @@ const Tickets = () => {
                                   options={cmMasterList.map((cm) => ({
                                       value: cm.userId,
                                       label: cm.name,
+                                      email: cm.emailId,
                                   }))}
                                   value={
                                       row.CM_name
@@ -642,6 +640,8 @@ const Tickets = () => {
                                   }}
                                   onChange={async (selectedOption) => {
                                       if (selectedOption?.value) {
+                                          const previousEmail = row.backupCM_email;
+                                          console.log(selectedOption);
                                           try {
                                               // 1. Update CM in Database
                                               const dbResponse = await fetch('http://localhost:5000/api/updateBackupCM_DB', {
@@ -659,7 +659,20 @@ const Tickets = () => {
 
                                               console.log('DB update result:', dbResult);
 
-                                              // 2. Fetch fresh ticket data
+
+                                               // 2. Put data for fresh tickets
+                                              const dbPayload = { asap: row.asap, backupEmail: selectedOption.email, previousEmail: previousEmail };
+
+                                              const updateTicketPut = await fetch(`http://localhost:5000/api/updateTicketByKey_DB/${row.ticketKey}`, {
+                                                  method: 'PUT',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify(dbPayload),
+                                              });
+
+                                              const dbUpdateTicketResponse = await updateTicketPut.json();
+                                              console.log(dbUpdateTicketResponse);
+
+                                              // 3. Fetch fresh ticket data
                                               const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
                                               const refreshedData = await refreshed.json();
 
@@ -669,7 +682,7 @@ const Tickets = () => {
                                                   setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
                                               }
 
-                                              // 3. Update CM in Google Sheet
+                                              // 4. Update CM in Google Sheet
                                               const sheetResponse = await fetch('http://localhost:5000/api/updateBackupCM_Sheet', {
                                                   method: 'PUT',
                                                   headers: {
@@ -799,7 +812,7 @@ const Tickets = () => {
                         options={uniqueOptions}
                         value={selectedSubTask}
                         placeholder={uniqueOptions.length > 0 ? 'Select Sub Task' : 'No Sub Task'}
-                        isDisabled={uniqueOptions.length === 0 || (!(row.enable || Number(user?.role) === 0))}
+                        isDisabled={uniqueOptions.length === 0 || !(row.enable || Number(user?.role) === 0)}
                         classNamePrefix="react-select"
                         styles={{
                             container: (base) => ({ ...base, minWidth: 180 }),
