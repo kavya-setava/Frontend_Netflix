@@ -191,38 +191,82 @@ const Tickets = () => {
         } catch (err) {
             console.error('Error fetching data:', err);
         }
-    };
+    };    
+
+    // useEffect(() => {
+    //     const filteredByRegion = selectedRegions.length > 0 ? allTicketsData.filter((t) => selectedRegions.map((r) => r.value).includes(t.cm_region)) : allTicketsData;
+
+    //     const uniqueCms = Array.from(new Set(filteredByRegion.map((t) => t.CM_name))).filter(Boolean);
+    //     setCmOptions(uniqueCms.map((name) => ({ value: name, label: name })));
+
+    //     const filteredByCm = selectedCM.length > 0 ? filteredByRegion.filter((t) => selectedCM.map((c) => c.value).includes(t.CM_name)) : filteredByRegion;
+
+    //     const uniqueTickets = Array.from(new Set(filteredByCm.map((t) => t.ticketKey))).filter(Boolean);
+    //     setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
+    // }, [selectedRegions, selectedCM, allTicketsData]);
+
+    // useEffect(() => {
+    //     if (!allTicketsData.length) return;
+
+    //     let filtered = allTicketsData;
+
+    //     if (selectedRegions.length) {
+    //         const regionSet = new Set(selectedRegions.map((r) => r.value));
+    //         filtered = filtered.filter((t) => regionSet.has(t.cm_region));
+    //     }
+
+    //     if (selectedCM.length) {
+    //         const cmSet = new Set(selectedCM.map((c) => c.value));
+    //         filtered = filtered.filter((t) => cmSet.has(t.CM_name));
+    //     }
+
+    //     if (selectedTicketId.length) {
+    //         const ticketSet = new Set(selectedTicketId.map((t) => t.value));
+    //         filtered = filtered.filter((t) => ticketSet.has(t.ticketKey));
+    //     }
+
+    //     if (selectedStatus) {
+    //         filtered = filtered.filter((t) => t.status === selectedStatus);
+    //     }
+
+    //     const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
+    //     setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
+
+    //     const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
+    //     setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
+    // }, [allTicketsData, selectedRegions, selectedCM, selectedStatus]);
 
     useEffect(() => {
         if (!allTicketsData.length) return;
-
-        let filtered = allTicketsData;
-
-        if (selectedRegions.length) {
-            const regionSet = new Set(selectedRegions.map((r) => r.value));
-            filtered = filtered.filter((t) => regionSet.has(t.cm_region));
-        }
-
-        if (selectedCM.length) {
-            const cmSet = new Set(selectedCM.map((c) => c.value));
-            filtered = filtered.filter((t) => cmSet.has(t.CM_name));
-        }
-
-        if (selectedTicketId.length) {
-            const ticketSet = new Set(selectedTicketId.map((t) => t.value));
-            filtered = filtered.filter((t) => ticketSet.has(t.ticketKey));
-        }
-
-        if (selectedStatus) {
-            filtered = filtered.filter((t) => t.status === selectedStatus);
-        }
-
-        const uniqueCMs = Array.from(new Set(filtered.map((d) => d.CM_name)));
+    
+        // Step 1: Apply region filter first (broad, progressive)
+        const filteredByRegion = selectedRegions.length > 0 
+            ? allTicketsData.filter((t) => selectedRegions.some((r) => r.value === t.cm_region)) 
+            : allTicketsData;
+    
+        // Step 2: Build CM options from region-filtered data
+        const uniqueCMs = Array.from(new Set(filteredByRegion.map((t) => t.CM_name))).filter(Boolean);
         setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
-
-        const uniqueTickets = Array.from(new Set(filtered.map((d) => d.ticketKey)));
-        setTicketIdOptions(uniqueTickets.map((t) => ({ value: t, label: t })));
-    }, [allTicketsData, selectedRegions, selectedCM, selectedStatus]);
+    
+        // Step 3: Apply CM filter (progressive again, not too strict)
+        const filteredByCM = selectedCM.length > 0 
+            ? filteredByRegion.filter((t) => selectedCM.some((c) => c.value === t.CM_name)) 
+            : filteredByRegion;
+    
+        // Step 4: Apply stricter filters for tickets (status + ticketId)
+        let finalFiltered = filteredByCM;
+        if (selectedTicketId.length > 0) {
+            const ticketSet = new Set(selectedTicketId.map((t) => t.value));
+            finalFiltered = finalFiltered.filter((t) => ticketSet.has(t.ticketKey));
+        }
+        if (selectedStatus) {
+            finalFiltered = finalFiltered.filter((t) => t.status === selectedStatus);
+        }
+    
+        // Step 5: Ticket options come from the stricter dataset
+        const uniqueTickets = Array.from(new Set(finalFiltered.map((t) => t.ticketKey))).filter(Boolean);
+        setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
+    }, [allTicketsData, selectedRegions, selectedCM, selectedTicketId, selectedStatus]);    
 
 
     const fetchAllTicketsForDropdowns = async () => {
@@ -295,17 +339,6 @@ const Tickets = () => {
         fetchDropdownData();
     }, []);
 
-    // useEffect(() => {
-    //     const filteredByRegion = selectedRegions.length > 0 ? allTicketsData.filter((t) => selectedRegions.map((r) => r.value).includes(t.cm_region)) : allTicketsData;
-
-    //     const uniqueCms = Array.from(new Set(filteredByRegion.map((t) => t.CM_name))).filter(Boolean);
-    //     setCmOptions(uniqueCms.map((name) => ({ value: name, label: name })));
-
-    //     const filteredByCm = selectedCM.length > 0 ? filteredByRegion.filter((t) => selectedCM.map((c) => c.value).includes(t.CM_name)) : filteredByRegion;
-
-    //     const uniqueTickets = Array.from(new Set(filteredByCm.map((t) => t.ticketKey))).filter(Boolean);
-    //     setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
-    // }, [selectedRegions, selectedCM, allTicketsData]);
 
     useEffect(() => {
         async function loadTaskDropdown() {
