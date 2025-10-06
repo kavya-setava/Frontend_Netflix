@@ -642,7 +642,7 @@ const Tickets = () => {
                       label: 'Name of CM',
                       key: 'CM_name',
                       render: (row) =>
-                          row.status === 'Closed' || row.status === 'Start' ? (
+                          row.status !== 'Assigned' ? (
                               <span>{row.CM_name || '—'}</span>
                           ) : (
                               <Select
