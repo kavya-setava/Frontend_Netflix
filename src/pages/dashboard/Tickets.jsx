@@ -77,6 +77,67 @@ const Tickets = () => {
         fetchCMs();
     }, []);
 
+    // notification start code
+    useEffect(() => {
+        // Function to show a desktop notification
+        const showNotification = (msg) => {
+            new Notification('New Message', {
+                body: msg,
+                icon: 'https://via.placeholder.com/128', // optional icon
+            });
+        };
+
+        // Check if browser supports notifications
+        if (!('Notification' in window)) {
+            console.warn('This browser does not support desktop notifications.');
+            return;
+        }
+
+        // Connect to WebSocket server
+        const socket = new WebSocket(`ws://localhost:5000/api/asapNotification?${encodeURIComponent(email)}`);
+
+        // Handle incoming messages from server
+        socket.onmessage = (event) => {
+            try {
+                // Parse incoming data (assuming JSON)
+                const data = JSON.parse(event.data);
+
+                // Example: data might look like { message: "Hello user!" }
+                if (data.message) {
+                    if (Notification.permission === 'granted') {
+                        showNotification(data.message);
+                    } else if (Notification.permission === 'default') {
+                        Notification.requestPermission().then((permission) => {
+                            if (permission === 'granted') {
+                                showNotification(data.message);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing message:', error);
+            }
+        };
+
+        socket.onopen = () => {
+            console.log('✅ WebSocket connected to server');
+        };
+
+        socket.onclose = () => {
+            console.log('❌ WebSocket connection closed');
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        // Cleanup on unmount
+        return () => {
+            socket.close();
+        };
+    }, []);
+    // notification end cod
+
     const handleRegionChange = (selectedOptions) => {
         setSelectedRegions(selectedOptions || []);
         setSelectedCM([]); // reset CM when region changes
@@ -191,7 +252,7 @@ const Tickets = () => {
         } catch (err) {
             console.error('Error fetching data:', err);
         }
-    };    
+    };
 
     // useEffect(() => {
     //     const filteredByRegion = selectedRegions.length > 0 ? allTicketsData.filter((t) => selectedRegions.map((r) => r.value).includes(t.cm_region)) : allTicketsData;
@@ -238,21 +299,17 @@ const Tickets = () => {
 
     useEffect(() => {
         if (!allTicketsData.length) return;
-    
+
         // Step 1: Apply region filter first (broad, progressive)
-        const filteredByRegion = selectedRegions.length > 0 
-            ? allTicketsData.filter((t) => selectedRegions.some((r) => r.value === t.cm_region)) 
-            : allTicketsData;
-    
+        const filteredByRegion = selectedRegions.length > 0 ? allTicketsData.filter((t) => selectedRegions.some((r) => r.value === t.cm_region)) : allTicketsData;
+
         // Step 2: Build CM options from region-filtered data
         const uniqueCMs = Array.from(new Set(filteredByRegion.map((t) => t.CM_name))).filter(Boolean);
         setCmOptions(uniqueCMs.map((cm) => ({ value: cm, label: cm })));
-    
+
         // Step 3: Apply CM filter (progressive again, not too strict)
-        const filteredByCM = selectedCM.length > 0 
-            ? filteredByRegion.filter((t) => selectedCM.some((c) => c.value === t.CM_name)) 
-            : filteredByRegion;
-    
+        const filteredByCM = selectedCM.length > 0 ? filteredByRegion.filter((t) => selectedCM.some((c) => c.value === t.CM_name)) : filteredByRegion;
+
         // Step 4: Apply stricter filters for tickets (status + ticketId)
         let finalFiltered = filteredByCM;
         if (selectedTicketId.length > 0) {
@@ -262,12 +319,11 @@ const Tickets = () => {
         if (selectedStatus) {
             finalFiltered = finalFiltered.filter((t) => t.status === selectedStatus);
         }
-    
+
         // Step 5: Ticket options come from the stricter dataset
         const uniqueTickets = Array.from(new Set(finalFiltered.map((t) => t.ticketKey))).filter(Boolean);
         setTicketIdOptions(uniqueTickets.map((key) => ({ value: key, label: key })));
-    }, [allTicketsData, selectedRegions, selectedCM, selectedTicketId, selectedStatus]);    
-
+    }, [allTicketsData, selectedRegions, selectedCM, selectedTicketId, selectedStatus]);
 
     const fetchAllTicketsForDropdowns = async () => {
         try {
@@ -338,7 +394,6 @@ const Tickets = () => {
 
         fetchDropdownData();
     }, []);
-
 
     useEffect(() => {
         async function loadTaskDropdown() {
