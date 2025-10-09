@@ -77,66 +77,67 @@ const Tickets = () => {
         fetchCMs();
     }, []);
 
-    // notification start code
-    useEffect(() => {
-        // Function to show a desktop notification
-        const showNotification = (msg) => {
-            new Notification('New Message', {
-                body: msg,
-                icon: 'https://via.placeholder.com/128', // optional icon
-            });
-        };
+   
 
-        // Check if browser supports notifications
-        if (!('Notification' in window)) {
-            console.warn('This browser does not support desktop notifications.');
-            return;
-        }
 
-        // Connect to WebSocket server
-        const socket = new WebSocket(`ws://localhost:5000/api/asapNotification?${encodeURIComponent(email)}`);
 
-        // Handle incoming messages from server
-        socket.onmessage = (event) => {
-            try {
-                // Parse incoming data (assuming JSON)
-                const data = JSON.parse(event.data);
+const showNotification = (title, ticket) => {
+  new Notification(title, {
+    body: `Status: ${ticket.status}\nUpdated: ${ticket.updated}`,
+     // optional icon
+  });
+};
 
-                // Example: data might look like { message: "Hello user!" }
-                if (data.message) {
-                    if (Notification.permission === 'granted') {
-                        showNotification(data.message);
-                    } else if (Notification.permission === 'default') {
-                        Notification.requestPermission().then((permission) => {
-                            if (permission === 'granted') {
-                                showNotification(data.message);
-                            }
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error parsing message:', error);
-            }
-        };
 
-        socket.onopen = () => {
-            console.log('✅ WebSocket connected to server');
-        };
 
-        socket.onclose = () => {
-            console.log('❌ WebSocket connection closed');
-        };
 
-        socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
 
-        // Cleanup on unmount
-        return () => {
-            socket.close();
-        };
-    }, []);
-    // notification end cod
+useEffect(() => {
+  const socket = startWebSocket('gmanickam@netflixcontractors.com');
+
+  return () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.close();
+      console.log("🛑 WebSocket connection closed");
+    }
+  };
+}, []); // empty dependency array → runs once
+
+
+
+const startWebSocket = (email) => {
+  if (!email) return null;
+
+  if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
+
+  const socket = new WebSocket(
+    `ws://localhost:5000/asapnoti?backupEmail=${encodeURIComponent(email)}`
+  );
+
+  socket.onopen = () => console.log("✅ WebSocket connected");
+  socket.onclose = () => console.log("❌ WebSocket disconnected");
+  socket.onerror = (err) => console.error("⚠️ WebSocket error:", err);
+
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      console.log("📩 WebSocket message:", data);
+
+      if (data.type === "ticket" && Notification.permission === "granted") {
+        showNotification(`ASAP Ticket: ${data.data.ticketKey}`, data.data);
+      }
+    } catch (err) {
+      console.error("Error parsing WebSocket message:", err);
+    }
+  };
+
+  return socket;
+};
+
+
 
     const handleRegionChange = (selectedOptions) => {
         setSelectedRegions(selectedOptions || []);
@@ -338,7 +339,12 @@ const Tickets = () => {
     };
     useEffect(() => {
         fetchAllTicketsForDropdowns();
+
     }, []);
+
+    // useEffect(() => {
+    //     startWebSocket('gmanickam@netflixcontractors.com');
+    // }, [])
 
     const [timers, setTimers] = useState({});
 
