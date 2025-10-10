@@ -17,15 +17,13 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-    const email = localStorage.getItem('email');
-    // const email = 'krajappa@netflixcontractors.com';
+   // const email = localStorage.getItem('email');
+     const email = 'skar@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
-
     const [selectedRegions, setSelectedRegions] = useState([]);
     const [selectedCM, setSelectedCM] = useState([]); // was null
     const [selectedTicketId, setSelectedTicketId] = useState([]); // was null
-
     const [allTicketsData, setAllTicketsData] = useState([]);
     const [cmOptions, setCmOptions] = useState([]);
     const [cmMasterList, setCmMasterList] = useState([]);
@@ -78,9 +76,6 @@ const Tickets = () => {
     }, []);
 
    
-
-
-
 const showNotification = (title, ticket) => {
   new Notification(title, {
     body: `Status: ${ticket.status}\nUpdated: ${ticket.updated}`,
@@ -88,12 +83,8 @@ const showNotification = (title, ticket) => {
   });
 };
 
-
-
-
-
 useEffect(() => {
-  const socket = startWebSocket('gmanickam@netflixcontractors.com');
+  const socket = startWebSocket('skar@netflixcontractors.com');
 
   return () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -102,8 +93,6 @@ useEffect(() => {
     }
   };
 }, []); // empty dependency array → runs once
-
-
 
 const startWebSocket = (email) => {
   if (!email) return null;
@@ -835,50 +824,124 @@ const startWebSocket = (email) => {
                             }),
                             menu: (provided) => ({ ...provided, zIndex: 9999 }),
                         }}
+                        // onChange={async (selectedOption) => {
+                        //     if (!selectedOption) return;
+
+                        //     // Local patch
+                        //     const newProjects = [...projects];
+                        //     newProjects[rowIndex].taskType = selectedOption.taskType;
+                        //     newProjects[rowIndex].subTaskType = null;
+                        //     newProjects[rowIndex].taskId = selectedOption.taskId;
+                        //     setProjects(newProjects);
+
+                        //     const hasSubTasks = taskDropdown.some((item) => item.taskType === selectedOption.taskType && item.subTaskType);
+
+                        //     if (!hasSubTasks) {
+                        //         try {
+                        //             // 1. PUT request
+                        //             const body = {
+                        //                 ticketKey: row.ticketKey,
+                        //                 taskId: selectedOption.taskId,
+                        //                 ticketId: row.ticketId,
+                        //             };
+
+                        //             await fetch(`http://localhost:5000/api/tasks/update-task`, {
+                        //                 method: 'PUT',
+                        //                 headers: {
+                        //                     'Content-Type': 'application/json',
+                        //                 },
+                        //                 body: JSON.stringify(body),
+                        //             });
+
+                        //             // 2. Fetch refreshed tickets
+                        //             const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
+                        //             const refreshedData = await refreshed.json();
+
+                        //             // 3. Find updated ticket
+                        //             const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+
+                        //             if (updatedTicket) {
+                        //                 setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
+                        //             }
+                        //         } catch (err) {
+                        //             console.error('⛔ Error updating task type:', err);
+                        //         }
+                        //     }
+                        // }}
+
                         onChange={async (selectedOption) => {
-                            if (!selectedOption) return;
+  if (!selectedOption) return;
 
-                            // Local patch
-                            const newProjects = [...projects];
-                            newProjects[rowIndex].taskType = selectedOption.taskType;
-                            newProjects[rowIndex].subTaskType = null;
-                            newProjects[rowIndex].taskId = selectedOption.taskId;
-                            setProjects(newProjects);
+  // 1) Local patch
+  const newProjects = [...projects];
+  newProjects[rowIndex].taskType = selectedOption.taskType;
+  newProjects[rowIndex].subTaskType = null;
+  newProjects[rowIndex].taskId = selectedOption.taskId;
+  setProjects(newProjects);
 
-                            const hasSubTasks = taskDropdown.some((item) => item.taskType === selectedOption.taskType && item.subTaskType);
+  const hasSubTasks = taskDropdown.some(
+    (item) => item.taskType === selectedOption.taskType && item.subTaskType
+  );
 
-                            if (!hasSubTasks) {
-                                try {
-                                    // 1. PUT request
-                                    const body = {
-                                        ticketKey: row.ticketKey,
-                                        taskId: selectedOption.taskId,
-                                        ticketId: row.ticketId,
-                                    };
+  if (hasSubTasks) return;
 
-                                    await fetch(`http://localhost:5000/api/tasks/update-task`, {
-                                        method: 'PUT',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify(body),
-                                    });
+  // 2) No subtasks → call both APIs
+  try {
+    const body = {
+      ticketKey: row.ticketKey,
+      taskId: selectedOption.taskId,
+      ticketId: row.ticketId,
+    };
 
-                                    // 2. Fetch refreshed tickets
-                                    const refreshed = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&ticketKeyList=${row.ticketKey}`);
-                                    const refreshedData = await refreshed.json();
+    // Helper to POST/PUT JSON
+    const json = async (url, method, payload) => {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`${method} ${url} failed (${res.status}): ${text || 'no body'}`);
+      }
+      // some endpoints might not return JSON
+      try { return await res.json(); } catch { return null; }
+    };
 
-                                    // 3. Find updated ticket
-                                    const updatedTicket = refreshedData.data.find((t) => t.ticketKey === row.ticketKey);
+    // 2a. Update task in DB
+    await json(`http://localhost:5000/api/tasks/update-task`, 'PUT', body);
 
-                                    if (updatedTicket) {
-                                        setProjects((prev) => prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket)));
-                                    }
-                                } catch (err) {
-                                    console.error('⛔ Error updating task type:', err);
-                                }
-                            }
-                        }}
+    // 2b. Update task in sheet (payload only needs ticketKey + taskId)
+        const refreshed = await fetch(
+      `http://localhost:5000/api/getNetflixTickets?email=${encodeURIComponent(
+        email
+      )}&ticketKeyList=${encodeURIComponent(row.ticketKey)}`
+    );
+    await json(`http://localhost:5000/api/tasks/updateTicketTaskInSheet`, 'PUT', {
+      ticketKey: row.ticketKey,
+      taskId: selectedOption.taskId,
+    });
+
+    // 3) Fetch refreshed ticket and update local state
+
+    if (!refreshed.ok) {
+      const msg = await refreshed.text().catch(() => '');
+      throw new Error(`GET /getNetflixTickets failed (${refreshed.status}): ${msg || 'no body'}`);
+    }
+    const refreshedData = await refreshed.json();
+    const updatedTicket = refreshedData?.data?.find((t) => t.ticketKey === row.ticketKey);
+
+    if (updatedTicket) {
+      setProjects((prev) =>
+        prev.map((ticket) => (ticket.ticketKey === row.ticketKey ? updatedTicket : ticket))
+      );
+    }
+  } catch (err) {
+    console.error('⛔ Error updating task & sheet:', err);
+    // Optionally: toast or revert local patch
+  }
+}}
+
                     />
                 );
             },
