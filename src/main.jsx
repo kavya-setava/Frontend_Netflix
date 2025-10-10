@@ -29,7 +29,7 @@ if (!existingUser) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <Suspense>
       <Provider store={store}>
         <AuthProvider> {/* 👈 wrap here */}
@@ -37,5 +37,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </AuthProvider>
       </Provider>
     </Suspense>
-  </React.StrictMode>
+  // </React.StrictMode>
 );
