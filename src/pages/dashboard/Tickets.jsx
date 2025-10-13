@@ -17,8 +17,8 @@ const Tickets = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedStatus, setSelectedStatus] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
-   // const email = localStorage.getItem('email');
-     const email = 'skar@netflixcontractors.com';
+    const email = localStorage.getItem('email');
+     //const email = 'skar@netflixcontractors.com';
     const [paginationGroup, setPaginationGroup] = useState(0); // 0 = pages 1-5, 1 = pages 6-10, etc.
     const pagesPerGroup = 5;
     const [selectedRegions, setSelectedRegions] = useState([]);
@@ -84,9 +84,9 @@ const showNotification = (title, ticket) => {
 };
 
 useEffect(() => {
-  const socket = startWebSocket('skar@netflixcontractors.com');
+  const socket = startWebSocket(email);
 
-  return () => {
+  return () => { 
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.close();
       console.log("🛑 WebSocket connection closed");
@@ -456,6 +456,33 @@ const startWebSocket = (email) => {
         return <span style={{ fontWeight: 'bold' }}>{formatTime(secondsRemaining)}</span>;
     }
 
+//     async function sendNotifyTickets(backupEmail) {
+//   try {
+//     const extraRes = await fetch('http://localhost:5000/api/sendnotifytickets', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//     //   body: JSON.stringify({
+//     //     backupEmail: backupEmail, // 👈 dynamically passing the email
+//     //   }),
+//                 body: JSON.stringify({
+//                     backupEmail: 'skar@netflixcontractors.com', // 👈 only sending this
+//                 }),
+//     });
+
+//     if (!extraRes.ok) {
+//       throw new Error('Failed to send notify tickets');
+//     }
+
+//     const extraData = await extraRes.json();
+//     console.log('Notify Tickets API called:', extraData);
+//     return extraData;
+//   } catch (extraErr) {
+//     console.error('Error calling notify tickets API:', extraErr);
+//     throw extraErr; // Re-throw the error for further handling
+//   }
+// }
+
+
     const LiveTimer = ({ initialTime }) => {
         const parseTimeToSeconds = (timeStr) => {
             const [h, m, s] = timeStr.split(':').map(Number);
@@ -504,21 +531,56 @@ const startWebSocket = (email) => {
         });
     }, [projects]);
 
-    useEffect(() => {
+
+
+useEffect(() => {
         if (role !== 1) return; // Only poll for CM
 
+        // const interval = setInterval(async () => {
+        //     try {
+        //         const res = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25&status=${selectedStatus || ' '}`);
+        //         const data = await res.json();
+        //         if (data.success) {
+        //             setProjects(data.data);
+        //         }
+        //         console.log(`Polling ${selectedStatus}`);
+        //     } catch (err) {
+        //         console.error('Polling error:', err);
+        //     }
+        // }, 5000); // Poll every 5 seconds
+
         const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25&status=${selectedStatus || ' '}`);
-                const data = await res.json();
-                if (data.success) {
-                    setProjects(data.data);
-                }
-                console.log(`Polling ${selectedStatus}`);
-            } catch (err) {
-                console.error('Polling error:', err);
-            }
-        }, 5000); // Poll every 5 seconds
+    try {
+        // 1️⃣ Existing polling API
+        const res = await fetch(`http://localhost:5000/api/getNetflixTickets?email=${email}&role=${role}&page=${page}&limit=25&status=${selectedStatus || ' '}`);
+        const data = await res.json();
+        if (data.success) {
+            setProjects(data.data);
+        }
+  
+
+
+    } catch (err) {
+        console.error('Polling error:', err);
+    }
+
+        try {
+            const extraRes = await fetch('http://localhost:5000/api/sendnotifytickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    backupEmail: email, // 👈 only sending this
+                }),
+            });
+            const extraData = await extraRes.json();
+            console.log('Notify Tickets API called:', extraData);
+        } catch (extraErr) {
+            console.error('Error calling notify tickets API:', extraErr);
+        }
+}, 5000); // Poll every 5 seconds
+
+
+
 
         return () => clearInterval(interval); // Cleanup
     }, [email, role, page, selectedStatus]);
@@ -542,7 +604,11 @@ const startWebSocket = (email) => {
                 if (totalSeconds <= 600) badgeClass = 'bg-danger';
 
                 const highlightStyle = Number(user?.role) === 1 && row.asap ? { backgroundColor: '#000000', border: '1px solid #ffeeba' } : {};
-
+                // sendNotifyTickets()
+// if(Number(user?.role) === 1 && row?.asap)
+// {
+//     sendNotifyTickets()
+// }
                 return (
                     <a
                         href={`https://netflix.atlassian.net/browse/${row.ticketKey}`}
@@ -1578,6 +1644,7 @@ const startWebSocket = (email) => {
                         Download Report
                     </button>
                 </div>
+             
 
                 {projects.length === 0 ? <div className="text-center text-muted py-4 fw-bold fs-5">No Data Available</div> : <ReusableTable columns={columns} data={projects} userRole={role} />}
 
